@@ -34,14 +34,53 @@ namespace BuildAndBounce.Builder
         private bool _isUsingGamepad;
 
         public Vector2 CursorPosition => _cursorPosition;
-        public bool PlaceTriggered => Time.timeScale > 0f && _placeAction != null && _placeAction.WasPressedThisFrame();
-        public bool DeleteTriggered => Time.timeScale > 0f && _deleteAction != null && _deleteAction.WasPressedThisFrame();
-        public bool RotateTriggered => Time.timeScale > 0f && _rotateAction != null && _rotateAction.WasPressedThisFrame();
-        public bool UndoTriggered => Time.timeScale > 0f && _undoAction != null && _undoAction.WasPressedThisFrame();
-        public bool RedoTriggered => Time.timeScale > 0f && _redoAction != null && _redoAction.WasPressedThisFrame();
-        public bool NextBlockTriggered => Time.timeScale > 0f && _nextBlockAction != null && _nextBlockAction.WasPressedThisFrame();
-        public bool PrevBlockTriggered => Time.timeScale > 0f && _prevBlockAction != null && _prevBlockAction.WasPressedThisFrame();
-        public bool ToggleModeTriggered => Time.timeScale > 0f && _toggleModeAction != null && _toggleModeAction.WasPressedThisFrame();
+        public bool PlaceTriggered => Time.timeScale > 0f && (
+            (_placeAction != null && _placeAction.WasPressedThisFrame()) ||
+            (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame)
+        );
+
+        public bool DeleteTriggered => Time.timeScale > 0f && (
+            (_deleteAction != null && _deleteAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && (Keyboard.current.xKey.wasPressedThisFrame || Keyboard.current.deleteKey.wasPressedThisFrame)) ||
+            (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame)
+        );
+
+        public bool RotateTriggered => Time.timeScale > 0f && (
+            (_rotateAction != null && _rotateAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && (Gamepad.current.buttonNorth.wasPressedThisFrame || Gamepad.current.rightShoulder.wasPressedThisFrame))
+        );
+
+        public bool UndoTriggered => Time.timeScale > 0f && (
+            (_undoAction != null && _undoAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.leftShoulder.wasPressedThisFrame)
+        );
+
+        public bool RedoTriggered => Time.timeScale > 0f && (
+            (_redoAction != null && _redoAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && Keyboard.current.yKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame)
+        );
+
+        public bool NextBlockTriggered => Time.timeScale > 0f && (
+            (_nextBlockAction != null && _nextBlockAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.rightArrowKey.wasPressedThisFrame)) ||
+            (Gamepad.current != null && Gamepad.current.dpad.right.wasPressedThisFrame)
+        );
+
+        public bool PrevBlockTriggered => Time.timeScale > 0f && (
+            (_prevBlockAction != null && _prevBlockAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && (Keyboard.current.qKey.wasPressedThisFrame || Keyboard.current.leftArrowKey.wasPressedThisFrame)) ||
+            (Gamepad.current != null && Gamepad.current.dpad.left.wasPressedThisFrame)
+        );
+
+        public bool ToggleModeTriggered => Time.timeScale > 0f && (
+            (_toggleModeAction != null && _toggleModeAction.WasPressedThisFrame()) ||
+            (Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && (Gamepad.current.selectButton.wasPressedThisFrame || Gamepad.current.startButton.wasPressedThisFrame))
+        );
         public bool IsUsingGamepad => _isUsingGamepad;
 
         private void Awake()
@@ -89,30 +128,31 @@ namespace BuildAndBounce.Builder
 
         private void UpdateCursor()
         {
-            if (_cursorMoveAction == null) return;
-
-            var control = _cursorMoveAction.activeControl;
-            if (control != null && control.device is Gamepad)
+            // If Gamepad left stick is actively moving, update virtual cursor
+            if (Gamepad.current != null && Gamepad.current.leftStick.ReadValue().sqrMagnitude > 0.05f)
             {
                 _isUsingGamepad = true;
-                Vector2 stick = _cursorMoveAction.ReadValue<Vector2>();
-                if (stick.sqrMagnitude > 0.01f)
-                {
-                    _virtualGamepadCursor += stick * _gamepadCursorSpeed * Time.unscaledDeltaTime;
-                    _virtualGamepadCursor.x = Mathf.Clamp(_virtualGamepadCursor.x, 0f, Screen.width);
-                    _virtualGamepadCursor.y = Mathf.Clamp(_virtualGamepadCursor.y, 0f, Screen.height);
-                }
+                Vector2 stick = Gamepad.current.leftStick.ReadValue();
+                _virtualGamepadCursor += stick * _gamepadCursorSpeed * Time.unscaledDeltaTime;
+                _virtualGamepadCursor.x = Mathf.Clamp(_virtualGamepadCursor.x, 0f, Screen.width);
+                _virtualGamepadCursor.y = Mathf.Clamp(_virtualGamepadCursor.y, 0f, Screen.height);
                 _cursorPosition = _virtualGamepadCursor;
             }
-            else
+            else if (Mouse.current != null)
             {
-                // Pointer / Mouse / Touch gives direct screen position
+                // Direct hardware mouse position
+                _isUsingGamepad = false;
+                _cursorPosition = Mouse.current.position.ReadValue();
+                _virtualGamepadCursor = _cursorPosition;
+            }
+            else if (_cursorMoveAction != null)
+            {
+                // Fallback through Input System action
                 Vector2 readPos = _cursorMoveAction.ReadValue<Vector2>();
                 if (readPos.sqrMagnitude > 0.1f)
                 {
                     _cursorPosition = readPos;
                     _virtualGamepadCursor = readPos;
-                    _isUsingGamepad = false;
                 }
             }
         }

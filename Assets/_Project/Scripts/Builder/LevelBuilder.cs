@@ -72,6 +72,7 @@ namespace BuildAndBounce.Builder
         public static event Action<BuilderMode> OnModeChanged;
         public static event Action<BlockData> OnSelectedBlockChanged;
         public static event Action<int> OnBlockCountChanged;
+        public static event Action<string> OnValidationFailed;
 
         private void Awake()
         {
@@ -151,6 +152,12 @@ namespace BuildAndBounce.Builder
             {
                 _previewInstance.SetActive(!isPaused && _currentMode == BuilderMode.Build);
             }
+
+            if (!isPaused && _currentMode == BuilderMode.Build)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
 
         private Camera GetBuilderCamera()
@@ -211,6 +218,7 @@ namespace BuildAndBounce.Builder
                 if (!validation.IsValid)
                 {
                     Debug.LogWarning($"[LevelBuilder] Cannot test play: {validation.Message}");
+                    OnValidationFailed?.Invoke(validation.Message);
                     return;
                 }
             }
@@ -250,6 +258,22 @@ namespace BuildAndBounce.Builder
                     {
                         _raceGhostManager.SetCourseId(course.shareCode);
                     }
+
+                    // Dynamically resolve active CourseStart from placed blocks or scene
+                    CourseStart activeStart = null;
+                    foreach (var kvp in _placedBlocks)
+                    {
+                        if (kvp.Key != null && kvp.Key.activeInHierarchy)
+                        {
+                            activeStart = kvp.Key.GetComponentInChildren<CourseStart>();
+                            if (activeStart != null) break;
+                        }
+                    }
+                    if (activeStart == null)
+                    {
+                        activeStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Exclude);
+                    }
+                    _courseStart = activeStart;
 
                     // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
                     CourseStart.TriggerCourseReset();
@@ -324,6 +348,20 @@ namespace BuildAndBounce.Builder
                 return;
             }
 
+            // Direct keyboard hotkeys 1-9 for palette block selection
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame) SelectBlock(0);
+                else if (Keyboard.current.digit2Key.wasPressedThisFrame || Keyboard.current.numpad2Key.wasPressedThisFrame) SelectBlock(1);
+                else if (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame) SelectBlock(2);
+                else if (Keyboard.current.digit4Key.wasPressedThisFrame || Keyboard.current.numpad4Key.wasPressedThisFrame) SelectBlock(3);
+                else if (Keyboard.current.digit5Key.wasPressedThisFrame || Keyboard.current.numpad5Key.wasPressedThisFrame) SelectBlock(4);
+                else if (Keyboard.current.digit6Key.wasPressedThisFrame || Keyboard.current.numpad6Key.wasPressedThisFrame) SelectBlock(5);
+                else if (Keyboard.current.digit7Key.wasPressedThisFrame || Keyboard.current.numpad7Key.wasPressedThisFrame) SelectBlock(6);
+                else if (Keyboard.current.digit8Key.wasPressedThisFrame || Keyboard.current.numpad8Key.wasPressedThisFrame) SelectBlock(7);
+                else if (Keyboard.current.digit9Key.wasPressedThisFrame || Keyboard.current.numpad9Key.wasPressedThisFrame) SelectBlock(8);
+            }
+
             if (_inputReader == null) return;
 
             // Palette navigation (Next / Previous block via Action Map)
@@ -362,21 +400,34 @@ namespace BuildAndBounce.Builder
                 var blockData = _catalog.GetBlock(_selectedBlockIndex);
                 if (blockData != null)
                 {
-                    // Enforce exactly 1 start platform at build-time: reject placing duplicate start platforms
+                    // Enforce exactly 1 start platform at build-time:
+                    // If placing a Start platform and one already exists, relocate it by removing the old one first
                     if (blockData.Category == BlockCategory.StartFinish && blockData.Id.ToLowerInvariant().Contains("start"))
                     {
-                        foreach (var placed in _placedBlocks.Values)
+                        GameObject existingStart = null;
+                        foreach (var kvp in _placedBlocks)
                         {
-                            if (placed.Category == BlockCategory.StartFinish && placed.Id.ToLowerInvariant().Contains("start"))
+                            if (kvp.Value != null && kvp.Value.Category == BlockCategory.StartFinish && kvp.Value.Id.ToLowerInvariant().Contains("start"))
                             {
-                                Debug.LogWarning("[LevelBuilder] A Start Platform already exists in the course. Delete the existing one to move it.");
-                                return;
+                                existingStart = kvp.Key;
+                                break;
                             }
+                        }
+                        if (existingStart != null)
+                        {
+                            UnregisterPlacedBlock(existingStart);
+                            Destroy(existingStart);
                         }
                     }
 
                     var cmd = new PlaceBlockCommand(this, blockData, _currentPlacementPosition, Quaternion.Euler(0f, _currentRotationY, 0f));
                     _history.ExecuteCommand(cmd);
+
+                    // Helpful workflow: If player just placed the Start Platform, advance selection to Finish Platform
+                    if (_selectedBlockIndex == 0 && _catalog.Count > 1)
+                    {
+                        SelectBlock(1);
+                    }
                 }
             }
 

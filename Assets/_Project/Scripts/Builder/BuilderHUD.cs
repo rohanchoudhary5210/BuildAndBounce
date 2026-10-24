@@ -70,6 +70,7 @@ namespace BuildAndBounce.Builder
             LevelBuilder.OnModeChanged += HandleModeChanged;
             LevelBuilder.OnSelectedBlockChanged += HandleSelectedBlockChanged;
             LevelBuilder.OnBlockCountChanged += HandleBlockCountChanged;
+            LevelBuilder.OnValidationFailed += HandleValidationFailed;
             if (_builder != null && _builder.History != null)
             {
                 _builder.History.OnHistoryChanged += UpdateHistoryButtons;
@@ -81,10 +82,16 @@ namespace BuildAndBounce.Builder
             LevelBuilder.OnModeChanged -= HandleModeChanged;
             LevelBuilder.OnSelectedBlockChanged -= HandleSelectedBlockChanged;
             LevelBuilder.OnBlockCountChanged -= HandleBlockCountChanged;
+            LevelBuilder.OnValidationFailed -= HandleValidationFailed;
             if (_builder != null && _builder.History != null)
             {
                 _builder.History.OnHistoryChanged -= UpdateHistoryButtons;
             }
+        }
+
+        private void HandleValidationFailed(string message)
+        {
+            ShowToast($"<color=#FF5555>Cannot Test Play:</color> {message}");
         }
 
         private void Start()
@@ -93,6 +100,11 @@ namespace BuildAndBounce.Builder
             UpdateHistoryButtons();
             int count = _builder != null && _builder.PlacedBlocks != null ? _builder.PlacedBlocks.Count : 0;
             HandleBlockCountChanged(count);
+
+            if (count == 0)
+            {
+                ShowToast("<color=#00E5FF>Build Mode:</color> Place Start & Finish pads, then press [Tab] to Test Play!");
+            }
         }
 
         private void HandleModeChanged(BuilderMode mode)
@@ -401,6 +413,7 @@ namespace BuildAndBounce.Builder
 
             var cbBg = centerBadge.AddComponent<Image>();
             cbBg.color = new Color(0.12f, 0.16f, 0.24f, 0.9f);
+            cbBg.raycastTarget = false;
 
             var cbTextObj = new GameObject("Text");
             cbTextObj.transform.SetParent(centerBadge.transform, false);
@@ -413,6 +426,7 @@ namespace BuildAndBounce.Builder
             _blockCountText.fontSize = 14;
             _blockCountText.alignment = TextAlignmentOptions.Center;
             _blockCountText.color = Color.white;
+            _blockCountText.raycastTarget = false;
 
             // Right action: Mode toggle (Play / Edit)
             var rightGroup = new GameObject("RightActionsGroup");
@@ -440,6 +454,7 @@ namespace BuildAndBounce.Builder
 
             var toastBg = _toastRoot.AddComponent<Image>();
             toastBg.color = new Color(0.07f, 0.1f, 0.16f, 0.95f);
+            toastBg.raycastTarget = false;
 
             var toastTextObj = new GameObject("ToastText");
             toastTextObj.transform.SetParent(_toastRoot.transform, false);
@@ -453,6 +468,7 @@ namespace BuildAndBounce.Builder
             _statusToastText.alignment = TextAlignmentOptions.Center;
             _statusToastText.fontSize = 18;
             _statusToastText.color = Color.white;
+            _statusToastText.raycastTarget = false;
             _toastRoot.SetActive(false);
 
             // 3. Controls Hint Banner (Floating above bottom palette)
@@ -467,6 +483,7 @@ namespace BuildAndBounce.Builder
 
             var hbBg = hintBar.AddComponent<Image>();
             hbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.82f);
+            hbBg.raycastTarget = false;
 
             var hbTextObj = new GameObject("HintText");
             hbTextObj.transform.SetParent(hintBar.transform, false);
@@ -480,6 +497,7 @@ namespace BuildAndBounce.Builder
             hbTmp.fontStyle = FontStyles.Bold;
             hbTmp.alignment = TextAlignmentOptions.Center;
             hbTmp.color = new Color(0.85f, 0.88f, 0.95f, 1f);
+            hbTmp.raycastTarget = false;
 
             // 4. Bottom Palette Bar
             var bottomBar = new GameObject("PaletteBar");

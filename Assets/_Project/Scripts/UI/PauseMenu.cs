@@ -127,6 +127,11 @@ namespace BuildAndBounce.UI
             // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
             CourseStart.TriggerCourseReset();
 
+            if (_courseStart == null)
+            {
+                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Exclude);
+            }
+
             // Teleport player back to start spawn position and rotation
             if (_playerRespawn != null && _courseStart != null)
             {
