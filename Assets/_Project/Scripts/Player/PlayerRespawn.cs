@@ -23,6 +23,7 @@ namespace BuildAndBounce.Player
         private Quaternion _respawnRotation;
 
         public event Action OnRespawned;
+        public static event Action<PlayerController> OnPlayerTeleported;
 
         public Vector3 CurrentRespawnPosition => _respawnPosition;
 
@@ -110,6 +111,7 @@ namespace BuildAndBounce.Player
             _characterController.enabled = true;
 
             _playerController.ResetVelocity();
+            OnPlayerTeleported?.Invoke(_playerController);
             OnRespawned?.Invoke();
         }
 

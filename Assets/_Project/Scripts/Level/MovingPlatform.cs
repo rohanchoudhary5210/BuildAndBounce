@@ -45,6 +45,11 @@ namespace BuildAndBounce.Level
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
+        private void OnEnable()
+        {
+            PlayerRespawn.OnPlayerTeleported += HandlePlayerTeleported;
+        }
+
         private void Start()
         {
             InitializeWaypoints();
@@ -155,6 +160,8 @@ namespace BuildAndBounce.Level
 
         private void OnDisable()
         {
+            PlayerRespawn.OnPlayerTeleported -= HandlePlayerTeleported;
+
             foreach (var rider in _riders)
             {
                 if (rider != null)
@@ -163,6 +170,18 @@ namespace BuildAndBounce.Level
                 }
             }
             _riders.Clear();
+        }
+
+        private void HandlePlayerTeleported(PlayerController player)
+        {
+            if (player != null && _riders.Remove(player))
+            {
+                player.SetPlatformVelocity(Vector3.zero);
+                if (player.transform.parent == transform)
+                {
+                    player.transform.SetParent(null);
+                }
+            }
         }
 
         private void OnDrawGizmosSelected()
