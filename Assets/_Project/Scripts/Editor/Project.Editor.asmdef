@@ -1,0 +1,19 @@
+{
+    "name": "Project.Editor",
+    "rootNamespace": "BuildAndBounce.Editor",
+    "references": [
+        "Project.Runtime",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
