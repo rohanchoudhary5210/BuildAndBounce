@@ -431,7 +431,7 @@ namespace BuildAndBounce.Builder
                 var transform = kvp.Key.transform;
                 data.blocks.Add(new PlacedBlockData(blockData.Id, transform.position, transform.eulerAngles));
             }
-            data.shareCode = CourseSerializer.GenerateShareCode(data);
+            data.shareCode = BuildAndBounce.Net.ShareCodeGenerator.Generate(6);
             return data;
         }
 

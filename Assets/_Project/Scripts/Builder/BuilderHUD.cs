@@ -142,7 +142,7 @@ namespace BuildAndBounce.Builder
                 return;
             }
 
-            var course = _builder.ExportCourseData("MyCourse");
+            var course = _builder.ExportCourseData($"Course_{DateTime.UtcNow:yyyyMMdd_HHmmss}");
             CourseSerializer.SaveCourse(course);
             ShowToast($"<color=#55FF55>SAVED!</color> Share Code: <b>{course.shareCode}</b>");
         }

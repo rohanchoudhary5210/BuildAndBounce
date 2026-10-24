@@ -85,6 +85,13 @@ namespace BuildAndBounce.Net
                 {
                     EnsureSimulationFoldersExist();
                     string path = Path.Combine(CloudCoursesFolder, $"{shareCode}.json");
+                    if (File.Exists(path))
+                    {
+                        Debug.LogWarning($"[CourseBackendService] Upload rejected: course '{shareCode}' already exists.");
+                        onComplete?.Invoke(false, $"Course with share code '{shareCode}' already exists.");
+                        yield break;
+                    }
+
                     File.WriteAllText(path, json);
                     Debug.Log($"[CourseBackendService] Course '{course.courseName}' uploaded successfully! Share Code: {ShareCodeGenerator.FormatCode(shareCode)}");
                     onComplete?.Invoke(true, shareCode);
@@ -97,7 +104,19 @@ namespace BuildAndBounce.Net
                 yield break;
             }
 
-            // Live Firebase Firestore REST upload
+            // Live Firebase Firestore REST upload - check if course already exists
+            string checkUrl = $"{_config.GetFirestoreBaseUrl()}/courses/{shareCode}";
+            using (var checkReq = UnityWebRequest.Get(checkUrl))
+            {
+                yield return checkReq.SendWebRequest();
+                if (checkReq.result == UnityWebRequest.Result.Success && checkReq.responseCode == 200)
+                {
+                    Debug.LogWarning($"[CourseBackendService] Upload rejected: course '{shareCode}' already exists on cloud.");
+                    onComplete?.Invoke(false, $"Course with share code '{shareCode}' already exists.");
+                    yield break;
+                }
+            }
+
             string url = $"{_config.GetFirestoreBaseUrl()}/courses/{shareCode}";
             string bodyJson = $"{{\"fields\": {{\"json\": {{\"stringValue\": {JsonUtility.ToJson(json)}}} }}}}";
 
@@ -113,7 +132,15 @@ namespace BuildAndBounce.Net
                 else
                 {
                     Debug.LogWarning($"[CourseBackendService] Live upload error: {request.error}. Falling back to simulation cache.");
+                    EnsureSimulationFoldersExist();
                     string path = Path.Combine(CloudCoursesFolder, $"{shareCode}.json");
+                    if (File.Exists(path))
+                    {
+                        Debug.LogWarning($"[CourseBackendService] Fallback upload rejected: course '{shareCode}' already exists.");
+                        onComplete?.Invoke(false, $"Course with share code '{shareCode}' already exists.");
+                        yield break;
+                    }
+
                     File.WriteAllText(path, json);
                     onComplete?.Invoke(true, shareCode);
                 }

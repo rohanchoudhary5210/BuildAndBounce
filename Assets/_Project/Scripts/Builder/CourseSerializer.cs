@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using BuildAndBounce.Net;
 using UnityEngine;
 
 namespace BuildAndBounce.Builder
 {
     /// <summary>
     /// Handles serialization and deserialization of course data to JSON,
-    /// file system persistence in Application.persistentDataPath, and share code generation.
+    /// file system persistence in Application.persistentDataPath using share code/timestamp filenames.
     /// </summary>
     public static class CourseSerializer
     {
         private const string CourseSubfolder = "Courses";
-        private const string CodeAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // 32 characters (no 0, 1, I, O)
 
         public static string CoursesDirectory
         {
@@ -56,51 +56,7 @@ namespace BuildAndBounce.Builder
         }
 
         /// <summary>
-        /// Generates a short, human-readable share code (e.g. 'BNCE-7K') derived from course content.
-        /// </summary>
-        public static string GenerateShareCode(CourseData data)
-        {
-            if (data == null || data.blocks == null || data.blocks.Count == 0)
-            {
-                return "BNCE-EMPTY";
-            }
-
-            // Deterministic 32-bit FNV-1a hash over course name and block signatures
-            uint hash = 2166136261;
-            void AddString(string s)
-            {
-                if (string.IsNullOrEmpty(s)) return;
-                byte[] bytes = Encoding.UTF8.GetBytes(s);
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    hash ^= bytes[i];
-                    hash *= 16777619;
-                }
-            }
-
-            AddString(data.courseName);
-            for (int i = 0; i < data.blocks.Count; i++)
-            {
-                var b = data.blocks[i];
-                AddString(b.blockId);
-                AddString(b.position.ToString("F1"));
-                AddString(b.rotation.ToString("F0"));
-            }
-
-            // Encode lower 20 bits of hash into 4 base-32 characters
-            char[] code = new char[4];
-            uint temp = hash;
-            for (int i = 0; i < 4; i++)
-            {
-                code[i] = CodeAlphabet[(int)(temp % (uint)CodeAlphabet.Length)];
-                temp /= (uint)CodeAlphabet.Length;
-            }
-
-            return $"BNCE-{new string(code)}";
-        }
-
-        /// <summary>
-        /// Saves CourseData to disk as a JSON file.
+        /// Saves CourseData to disk as a JSON file using the course share code (or timestamp) as filename.
         /// </summary>
         public static string SaveCourse(CourseData data)
         {
@@ -108,13 +64,14 @@ namespace BuildAndBounce.Builder
 
             if (string.IsNullOrEmpty(data.shareCode))
             {
-                data.shareCode = GenerateShareCode(data);
+                data.shareCode = ShareCodeGenerator.Generate(6);
             }
 
-            string sanitizedName = SanitizeFileName(data.courseName);
-            if (string.IsNullOrEmpty(sanitizedName)) sanitizedName = "Course";
+            string fileName = !string.IsNullOrEmpty(data.shareCode)
+                ? SanitizeFileName(data.shareCode)
+                : $"course_{DateTime.UtcNow:yyyyMMdd_HHmmss}";
 
-            string filePath = Path.Combine(CoursesDirectory, $"{sanitizedName}.json");
+            string filePath = Path.Combine(CoursesDirectory, $"{fileName}.json");
             string json = ToJson(data, prettyPrint: true);
 
             File.WriteAllText(filePath, json, Encoding.UTF8);
