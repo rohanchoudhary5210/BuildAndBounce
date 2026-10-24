@@ -3,16 +3,6 @@ using UnityEngine;
 
 namespace BuildAndBounce.Builder
 {
-    public enum BlockCategory
-    {
-        Platform,
-        StartFinish,
-        Checkpoint,
-        Moving,
-        Hazard,
-        Special
-    }
-
     /// <summary>
     /// Metadata definition for a placeable course piece in the Level Builder.
     /// Used by BlockCatalog to populate the build mode palette.
