@@ -123,6 +123,42 @@ namespace BuildAndBounce.Editor
                 pauseObj.AddComponent<PauseMenu>();
             }
 
+            // Wire Serialized Inspector References
+            var courseStartComp = startPad.GetComponent<CourseStart>();
+            var timerComp = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+            var hudComp = UnityEngine.Object.FindAnyObjectByType<GameHUD>();
+            var pauseComp = UnityEngine.Object.FindAnyObjectByType<PauseMenu>();
+            var respawnComp = player != null ? player.GetComponent<PlayerRespawn>() : null;
+            var builderComp = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Builder.LevelBuilder>();
+
+            if (respawnComp != null && courseStartComp != null)
+            {
+                var soRespawn = new SerializedObject(respawnComp);
+                var p = soRespawn.FindProperty("_courseStart");
+                if (p != null) p.objectReferenceValue = courseStartComp;
+                soRespawn.ApplyModifiedProperties();
+            }
+
+            if (pauseComp != null)
+            {
+                var soPause = new SerializedObject(pauseComp);
+                var pStart = soPause.FindProperty("_courseStart");
+                if (pStart != null) pStart.objectReferenceValue = courseStartComp;
+                var pRespawn = soPause.FindProperty("_playerRespawn");
+                if (pRespawn != null) pRespawn.objectReferenceValue = respawnComp;
+                soPause.ApplyModifiedProperties();
+            }
+
+            if (hudComp != null)
+            {
+                var soHud = new SerializedObject(hudComp);
+                var pTimer = soHud.FindProperty("_timer");
+                if (pTimer != null) pTimer.objectReferenceValue = timerComp;
+                var pBuilder = soHud.FindProperty("_levelBuilder");
+                if (pBuilder != null) pBuilder.objectReferenceValue = builderComp;
+                soHud.ApplyModifiedProperties();
+            }
+
             // 9. Wire Player game-feel components (Visuals, Audio, Squash & Stretch)
             PlayerSetupTool.WirePlayerReferences();
 

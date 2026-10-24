@@ -13,6 +13,9 @@ namespace BuildAndBounce.Player
     [RequireComponent(typeof(PlayerController))]
     public class PlayerRespawn : MonoBehaviour
     {
+        [Header("Level References")]
+        [SerializeField] private CourseStart _courseStart;
+
         private CharacterController _characterController;
         private PlayerController _playerController;
 
@@ -30,16 +33,24 @@ namespace BuildAndBounce.Player
 
             _respawnPosition = transform.position;
             _respawnRotation = transform.rotation;
+
+            if (_courseStart == null)
+            {
+                Debug.LogError($"[PlayerRespawn] CourseStart reference is missing on {gameObject.name}. Wire it in Inspector or run Player/Level Setup Tool.", this);
+            }
+            else
+            {
+                _respawnPosition = _courseStart.SpawnPosition;
+                _respawnRotation = _courseStart.SpawnRotation;
+            }
         }
 
         private void Start()
         {
-            // If a CourseStart pad exists in the scene, default to its spawn point
-            var start = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
-            if (start != null)
+            if (_courseStart != null)
             {
-                _respawnPosition = start.SpawnPosition;
-                _respawnRotation = start.SpawnRotation;
+                _respawnPosition = _courseStart.SpawnPosition;
+                _respawnRotation = _courseStart.SpawnRotation;
             }
         }
 
@@ -59,11 +70,10 @@ namespace BuildAndBounce.Player
 
         private void HandleCourseReset()
         {
-            var start = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
-            if (start != null)
+            if (_courseStart != null)
             {
-                _respawnPosition = start.SpawnPosition;
-                _respawnRotation = start.SpawnRotation;
+                _respawnPosition = _courseStart.SpawnPosition;
+                _respawnRotation = _courseStart.SpawnRotation;
             }
         }
 

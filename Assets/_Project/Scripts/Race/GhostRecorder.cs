@@ -44,8 +44,7 @@ namespace BuildAndBounce.Race
             _sampleInterval = 1f / Mathf.Max(1f, _sampleRate);
             if (_target == null)
             {
-                var player = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Player.PlayerController>();
-                if (player != null) _target = player.transform;
+                Debug.LogError("[GhostRecorder] Target Transform reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
             }
         }
 
@@ -80,8 +79,8 @@ namespace BuildAndBounce.Race
         {
             if (_target == null)
             {
-                var player = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Player.PlayerController>();
-                if (player != null) _target = player.transform;
+                Debug.LogError("[GhostRecorder] Cannot start recording: target Transform is missing!", this);
+                return;
             }
 
             _recordedFrames.Clear();

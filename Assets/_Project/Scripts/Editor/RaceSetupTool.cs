@@ -73,6 +73,38 @@ namespace BuildAndBounce.Editor
                 hud = hudObj.AddComponent<LeaderboardHUD>();
             }
 
+            // Wire Serialized Properties on RaceGhostManager
+            var soRace = new SerializedObject(raceManager);
+            var pRecorder = soRace.FindProperty("_recorder");
+            if (pRecorder != null) pRecorder.objectReferenceValue = recorder;
+            var pPlayback = soRace.FindProperty("_playback");
+            if (pPlayback != null) pPlayback.objectReferenceValue = playback;
+            var pLeaderboards = soRace.FindProperty("_leaderboards");
+            if (pLeaderboards != null) pLeaderboards.objectReferenceValue = leaderboard;
+            var pTimer = soRace.FindProperty("_timer");
+            if (pTimer != null) pTimer.objectReferenceValue = timer;
+            soRace.ApplyModifiedProperties();
+
+            // Wire GhostRecorder Target
+            if (recorder != null && player != null)
+            {
+                var soRec = new SerializedObject(recorder);
+                var pTarget = soRec.FindProperty("_target");
+                if (pTarget != null) pTarget.objectReferenceValue = player.transform;
+                soRec.ApplyModifiedProperties();
+            }
+
+            // Wire LeaderboardHUD Properties
+            if (hud != null)
+            {
+                var soHud = new SerializedObject(hud);
+                var pManager = soHud.FindProperty("_leaderboardManager");
+                if (pManager != null) pManager.objectReferenceValue = leaderboard;
+                var pRace = soHud.FindProperty("_raceGhostManager");
+                if (pRace != null) pRace.objectReferenceValue = raceManager;
+                soHud.ApplyModifiedProperties();
+            }
+
             // 8. Enforce single audio listener
             AudioListenerGuard.EnforceSingleListener();
 

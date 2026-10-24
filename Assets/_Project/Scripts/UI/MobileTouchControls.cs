@@ -26,13 +26,24 @@ namespace BuildAndBounce.UI
         [SerializeField] private Button _dashButton;
         [SerializeField] private Button _buildToggleButton;
 
-        private PlayerInputReader _inputReader;
-        private LevelBuilder _levelBuilder;
+        [Header("Scene References")]
+        [SerializeField] private PlayerInputReader _inputReader;
+        [SerializeField] private LevelBuilder _levelBuilder;
+
         private Vector2 _joystickInput;
         private float _joystickRadius = 60f;
 
         private void Awake()
         {
+            if (_inputReader == null)
+            {
+                Debug.LogError("[MobileTouchControls] PlayerInputReader reference is missing! Wire it in Inspector or run Player Setup Tool.", this);
+            }
+            if (_levelBuilder == null)
+            {
+                Debug.LogError("[MobileTouchControls] LevelBuilder reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+
             bool isMobile = Application.isMobilePlatform || _forceShowForTesting;
             if (!isMobile)
             {
@@ -48,9 +59,6 @@ namespace BuildAndBounce.UI
 
         private void Start()
         {
-            _inputReader = UnityEngine.Object.FindAnyObjectByType<PlayerInputReader>();
-            _levelBuilder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
-
             if (_buildToggleButton != null)
             {
                 _buildToggleButton.onClick.AddListener(OnBuildToggleClicked);
@@ -116,7 +124,6 @@ namespace BuildAndBounce.UI
 
         private void OnBuildToggleClicked()
         {
-            if (_levelBuilder == null) _levelBuilder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
             if (_levelBuilder != null) _levelBuilder.ToggleMode();
         }
 

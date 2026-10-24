@@ -20,6 +20,7 @@ namespace BuildAndBounce.Builder
     {
         [Header("References (Auto-built if unassigned)")]
         [SerializeField] private LevelBuilder _builder;
+        [SerializeField] private BuildAndBounce.UI.OnlineShareHUD _shareHud;
         [SerializeField] private GameObject _hudRoot;
         [SerializeField] private Button _modeToggleButton;
         [SerializeField] private TextMeshProUGUI _modeToggleText;
@@ -44,7 +45,14 @@ namespace BuildAndBounce.Builder
 
         private void Awake()
         {
-            if (_builder == null) _builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
+            if (_builder == null)
+            {
+                Debug.LogError("[BuilderHUD] LevelBuilder reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+            if (_shareHud == null)
+            {
+                Debug.LogError("[BuilderHUD] OnlineShareHUD reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
 
             if (_hudRoot == null)
             {
@@ -177,10 +185,9 @@ namespace BuildAndBounce.Builder
 
         public void OpenShareDialog()
         {
-            var shareHud = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.UI.OnlineShareHUD>(FindObjectsInactive.Include);
-            if (shareHud != null)
+            if (_shareHud != null)
             {
-                shareHud.ToggleDialog();
+                _shareHud.ToggleDialog();
             }
             else
             {

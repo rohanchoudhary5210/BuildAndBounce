@@ -22,6 +22,10 @@ namespace BuildAndBounce.UI
         [SerializeField] private Button _restartButton;
         [SerializeField] private Button _quitButton;
 
+        [Header("Course References")]
+        [SerializeField] private CourseStart _courseStart;
+        [SerializeField] private PlayerRespawn _playerRespawn;
+
         private bool _isPaused;
         public bool IsPaused => _isPaused;
 
@@ -29,6 +33,15 @@ namespace BuildAndBounce.UI
 
         private void Awake()
         {
+            if (_courseStart == null)
+            {
+                Debug.LogError("[PauseMenu] CourseStart reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+            }
+            if (_playerRespawn == null)
+            {
+                Debug.LogError("[PauseMenu] PlayerRespawn reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+            }
+
             if (_menuPanel == null)
             {
                 BuildPauseMenuHierarchy();
@@ -37,14 +50,6 @@ namespace BuildAndBounce.UI
             if (_menuPanel != null)
             {
                 _menuPanel.SetActive(false);
-            }
-
-            // Ensure an EventSystem exists in the scene for UI button interaction & gamepad navigation
-            if (UnityEngine.Object.FindAnyObjectByType<EventSystem>() == null)
-            {
-                var eventSystemObj = new GameObject("EventSystem");
-                eventSystemObj.AddComponent<EventSystem>();
-                eventSystemObj.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
             }
         }
 
@@ -115,11 +120,9 @@ namespace BuildAndBounce.UI
             CourseStart.TriggerCourseReset();
 
             // Teleport player back to start spawn position and rotation
-            var start = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
-            var respawn = UnityEngine.Object.FindAnyObjectByType<PlayerRespawn>();
-            if (respawn != null && start != null)
+            if (_playerRespawn != null && _courseStart != null)
             {
-                respawn.RespawnAt(start.SpawnPosition, start.SpawnRotation);
+                _playerRespawn.RespawnAt(_courseStart.SpawnPosition, _courseStart.SpawnRotation);
             }
         }
 

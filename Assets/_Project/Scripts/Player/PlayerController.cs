@@ -61,9 +61,9 @@ namespace BuildAndBounce.Player
                 gameObject.tag = "Player";
             }
 
-            if (_cameraTransform == null && Camera.main != null)
+            if (_cameraTransform == null)
             {
-                _cameraTransform = Camera.main.transform;
+                Debug.LogError($"[PlayerController] Missing Camera Transform reference on {gameObject.name}. Wire it in Inspector or run Player Setup Tool.", this);
             }
         }
 

@@ -33,6 +33,12 @@ namespace BuildAndBounce.Builder
         [SerializeField] private Transform _courseContainer;
         [SerializeField] private BuilderCamera _builderCamera;
 
+        [Header("Mode Switch References")]
+        [SerializeField] private PlayerController _playerController;
+        [SerializeField] private CinemachineCamera _playerCamera;
+        [SerializeField] private RaceGhostManager _raceGhostManager;
+        [SerializeField] private CourseStart _courseStart;
+
         [Header("Preview Colors")]
         [SerializeField] private Color _validPlacementColor = new Color(0.2f, 0.9f, 0.3f, 0.5f);
         [SerializeField] private Color _invalidPlacementColor = new Color(0.9f, 0.2f, 0.2f, 0.5f);
@@ -83,7 +89,24 @@ namespace BuildAndBounce.Builder
             }
             if (_cachedBuilderCamera == null)
             {
-                _cachedBuilderCamera = Camera.main;
+                Debug.LogError("[LevelBuilder] BuilderCamera reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+
+            if (_playerController == null)
+            {
+                Debug.LogError("[LevelBuilder] PlayerController reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+            if (_playerCamera == null)
+            {
+                Debug.LogError("[LevelBuilder] PlayerCamera (CinemachineCamera) reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+            if (_raceGhostManager == null)
+            {
+                Debug.LogError("[LevelBuilder] RaceGhostManager reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+            if (_courseStart == null)
+            {
+                Debug.LogError("[LevelBuilder] CourseStart reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
             }
 
             EnsureCatalogLoaded();
@@ -92,16 +115,13 @@ namespace BuildAndBounce.Builder
 
         private Camera GetBuilderCamera()
         {
+            if (_cachedBuilderCamera == null && _builderCamera != null)
+            {
+                _cachedBuilderCamera = _builderCamera.GetComponent<Camera>();
+            }
             if (_cachedBuilderCamera == null)
             {
-                if (_builderCamera != null)
-                {
-                    _cachedBuilderCamera = _builderCamera.GetComponent<Camera>();
-                }
-                if (_cachedBuilderCamera == null)
-                {
-                    _cachedBuilderCamera = Camera.main;
-                }
+                Debug.LogError("[LevelBuilder] Missing BuilderCamera reference! Wire it in Inspector or run Builder Setup Tool.", this);
             }
             return _cachedBuilderCamera;
         }
@@ -156,38 +176,33 @@ namespace BuildAndBounce.Builder
             }
 
             // Toggle player and gameplay camera
-            var player = UnityEngine.Object.FindAnyObjectByType<PlayerController>(FindObjectsInactive.Include);
-            var vcam = UnityEngine.Object.FindAnyObjectByType<CinemachineCamera>(FindObjectsInactive.Include);
-
-            if (player != null)
+            if (_playerController != null)
             {
-                player.gameObject.SetActive(!isBuild);
+                _playerController.gameObject.SetActive(!isBuild);
 
                 if (!isBuild)
                 {
                     // Set active course ID for ghost recording and playback
                     var course = ExportCourseData();
-                    var ghostManager = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Race.RaceGhostManager>();
-                    if (ghostManager != null && course != null)
+                    if (_raceGhostManager != null && course != null)
                     {
-                        ghostManager.SetCourseId(course.shareCode);
+                        _raceGhostManager.SetCourseId(course.shareCode);
                     }
 
                     // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
                     CourseStart.TriggerCourseReset();
 
-                    var startPad = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
-                    var respawn = player.GetComponent<PlayerRespawn>();
-                    if (startPad != null && respawn != null)
+                    var respawn = _playerController.GetComponent<PlayerRespawn>();
+                    if (_courseStart != null && respawn != null)
                     {
-                        respawn.RespawnAt(startPad.SpawnPosition, startPad.SpawnRotation);
+                        respawn.RespawnAt(_courseStart.SpawnPosition, _courseStart.SpawnRotation);
                     }
                 }
             }
 
-            if (vcam != null)
+            if (_playerCamera != null)
             {
-                vcam.gameObject.SetActive(!isBuild);
+                _playerCamera.gameObject.SetActive(!isBuild);
             }
 
             // Cursor state
@@ -480,10 +495,9 @@ namespace BuildAndBounce.Builder
             Debug.Log($"[LevelBuilder] Loaded course '{data.courseName}' with {data.blocks.Count} blocks (Code: {data.shareCode})");
             OnBlockCountChanged?.Invoke(_placedBlocks.Count);
 
-            var ghostManager = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Race.RaceGhostManager>();
-            if (ghostManager != null)
+            if (_raceGhostManager != null)
             {
-                ghostManager.SetCourseId(data.shareCode);
+                _raceGhostManager.SetCourseId(data.shareCode);
             }
         }
 

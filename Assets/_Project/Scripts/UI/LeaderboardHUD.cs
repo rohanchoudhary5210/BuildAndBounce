@@ -22,6 +22,10 @@ namespace BuildAndBounce.UI
         [SerializeField] private Transform _entriesContainer;
         [SerializeField] private List<TextMeshProUGUI> _entryRows = new List<TextMeshProUGUI>();
 
+        [Header("Scene References")]
+        [SerializeField] private LeaderboardManager _leaderboardManager;
+        [SerializeField] private RaceGhostManager _raceGhostManager;
+
         private bool _isOpen;
 
         private void Awake()
@@ -29,6 +33,15 @@ namespace BuildAndBounce.UI
             if (_panel == null)
             {
                 BuildLeaderboardHierarchy();
+            }
+
+            if (_leaderboardManager == null)
+            {
+                Debug.LogError("[LeaderboardHUD] LeaderboardManager reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
+            }
+            if (_raceGhostManager == null)
+            {
+                Debug.LogError("[LeaderboardHUD] RaceGhostManager reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
             }
 
             if (_panel != null)
@@ -96,13 +109,11 @@ namespace BuildAndBounce.UI
                 _finishTimeText.text = $"YOUR TIME: <color=#00E5FF>{CourseTimer.FormatTime(finishTime)}</color>";
             }
 
-            var manager = LeaderboardManager.Instance ?? UnityEngine.Object.FindAnyObjectByType<LeaderboardManager>();
-            var raceManager = UnityEngine.Object.FindAnyObjectByType<RaceGhostManager>();
-            string courseId = raceManager != null ? raceManager.ActiveCourseId : "test_course";
+            string courseId = _raceGhostManager != null ? _raceGhostManager.ActiveCourseId : "test_course";
 
-            if (manager != null)
+            if (_leaderboardManager != null)
             {
-                var data = manager.GetLeaderboard(courseId);
+                var data = _leaderboardManager.GetLeaderboard(courseId);
                 bool isNewRecord = data.entries.Count > 0 && Mathf.Abs(data.entries[0].time - finishTime) < 0.001f;
 
                 if (_recordBadgeText != null)

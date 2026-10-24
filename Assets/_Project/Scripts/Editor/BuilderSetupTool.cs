@@ -111,7 +111,12 @@ namespace BuildAndBounce.Editor
                 shareHud = shareHudObj.AddComponent<BuildAndBounce.UI.OnlineShareHUD>();
             }
 
-            // Wire Serialized Properties
+            // Wire Serialized Properties on LevelBuilder
+            var playerComp = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Player.PlayerController>(FindObjectsInactive.Include);
+            var vcamComp = UnityEngine.Object.FindAnyObjectByType<Unity.Cinemachine.CinemachineCamera>(FindObjectsInactive.Include);
+            var ghostMgrComp = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Race.RaceGhostManager>(FindObjectsInactive.Include);
+            var startPadComp = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Level.CourseStart>(FindObjectsInactive.Include);
+
             var soBuilder = new SerializedObject(builder);
             var propCatalog = soBuilder.FindProperty("_catalog");
             if (propCatalog != null) propCatalog.objectReferenceValue = catalog;
@@ -122,7 +127,66 @@ namespace BuildAndBounce.Editor
             var propCam = soBuilder.FindProperty("_builderCamera");
             if (propCam != null) propCam.objectReferenceValue = builderCam;
 
+            var propPlayer = soBuilder.FindProperty("_playerController");
+            if (propPlayer != null) propPlayer.objectReferenceValue = playerComp;
+
+            var propVcam = soBuilder.FindProperty("_playerCamera");
+            if (propVcam != null) propVcam.objectReferenceValue = vcamComp;
+
+            var propGhostMgr = soBuilder.FindProperty("_raceGhostManager");
+            if (propGhostMgr != null) propGhostMgr.objectReferenceValue = ghostMgrComp;
+
+            var propStart = soBuilder.FindProperty("_courseStart");
+            if (propStart != null) propStart.objectReferenceValue = startPadComp;
+
             soBuilder.ApplyModifiedProperties();
+
+            // Wire Serialized Properties on BuilderHUD
+            if (hud != null)
+            {
+                var soHud = new SerializedObject(hud);
+                var pBuilder = soHud.FindProperty("_builder");
+                if (pBuilder != null) pBuilder.objectReferenceValue = builder;
+                var pShare = soHud.FindProperty("_shareHud");
+                if (pShare != null) pShare.objectReferenceValue = shareHud;
+                soHud.ApplyModifiedProperties();
+            }
+
+            // Wire Serialized Properties on OnlineShareHUD
+            if (shareHud != null)
+            {
+                var soShare = new SerializedObject(shareHud);
+                var pBuilder = soShare.FindProperty("_builder");
+                if (pBuilder != null) pBuilder.objectReferenceValue = builder;
+                var pBackend = soShare.FindProperty("_backend");
+                if (pBackend != null) pBackend.objectReferenceValue = backend;
+                soShare.ApplyModifiedProperties();
+            }
+
+            // Wire Serialized Properties on GameHUD if in scene
+            var gameHud = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.UI.GameHUD>(FindObjectsInactive.Include);
+            if (gameHud != null)
+            {
+                var soGameHud = new SerializedObject(gameHud);
+                var pBuilder = soGameHud.FindProperty("_levelBuilder");
+                if (pBuilder != null) pBuilder.objectReferenceValue = builder;
+                soGameHud.ApplyModifiedProperties();
+            }
+
+            // Wire Serialized Properties on MobileTouchControls if in scene
+            var touchControls = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.UI.MobileTouchControls>(FindObjectsInactive.Include);
+            if (touchControls != null)
+            {
+                var soTouch = new SerializedObject(touchControls);
+                var pBuilder = soTouch.FindProperty("_levelBuilder");
+                if (pBuilder != null) pBuilder.objectReferenceValue = builder;
+                if (playerComp != null)
+                {
+                    var pInput = soTouch.FindProperty("_inputReader");
+                    if (pInput != null) pInput.objectReferenceValue = playerComp.GetComponent<BuildAndBounce.Player.PlayerInputReader>();
+                }
+                soTouch.ApplyModifiedProperties();
+            }
 
             EditorUtility.SetDirty(builder);
             EditorUtility.SetDirty(builderCam);

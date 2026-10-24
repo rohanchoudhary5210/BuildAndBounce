@@ -24,13 +24,24 @@ namespace BuildAndBounce.UI
         [SerializeField] private Button _downloadButton;
         [SerializeField] private Button _closeButton;
 
-        private LevelBuilder _builder;
+        [Header("References")]
+        [SerializeField] private LevelBuilder _builder;
+        [SerializeField] private CourseBackendService _backend;
 
         private void Awake()
         {
             if (_panel == null)
             {
                 BuildShareHUDHierarchy();
+            }
+
+            if (_builder == null)
+            {
+                Debug.LogError("[OnlineShareHUD] LevelBuilder reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+            }
+            if (_backend == null)
+            {
+                Debug.LogError("[OnlineShareHUD] CourseBackendService reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
             }
 
             if (_panel != null)
@@ -41,8 +52,6 @@ namespace BuildAndBounce.UI
 
         private void Start()
         {
-            _builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
-
             if (_uploadButton != null) _uploadButton.onClick.AddListener(OnUploadClicked);
             if (_downloadButton != null) _downloadButton.onClick.AddListener(OnDownloadClicked);
             if (_closeButton != null) _closeButton.onClick.AddListener(CloseDialog);
@@ -78,7 +87,6 @@ namespace BuildAndBounce.UI
 
         public void OnUploadClicked()
         {
-            if (_builder == null) _builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
             if (_builder == null) return;
 
             var course = _builder.GetCourseData();
@@ -90,10 +98,9 @@ namespace BuildAndBounce.UI
 
             SetStatus("Uploading course to cloud...");
 
-            var backend = CourseBackendService.Instance ?? UnityEngine.Object.FindAnyObjectByType<CourseBackendService>();
-            if (backend != null)
+            if (_backend != null)
             {
-                backend.UploadCourse(course, (success, code) =>
+                _backend.UploadCourse(course, (success, code) =>
                 {
                     if (success)
                     {
@@ -128,14 +135,12 @@ namespace BuildAndBounce.UI
             string code = _shareCodeInput.text.Trim();
             SetStatus($"Downloading course '{code}'...");
 
-            var backend = CourseBackendService.Instance ?? UnityEngine.Object.FindAnyObjectByType<CourseBackendService>();
-            if (backend != null)
+            if (_backend != null)
             {
-                backend.DownloadCourse(code, (success, courseData) =>
+                _backend.DownloadCourse(code, (success, courseData) =>
                 {
                     if (success && courseData != null)
                     {
-                        if (_builder == null) _builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
                         if (_builder != null)
                         {
                             _builder.LoadCourseData(courseData);

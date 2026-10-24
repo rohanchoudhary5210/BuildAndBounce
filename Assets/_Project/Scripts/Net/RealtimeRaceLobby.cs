@@ -38,10 +38,12 @@ namespace BuildAndBounce.Net
             new Color(0.9f, 0.3f, 0.8f)   // P4: Purple
         };
 
+        [Header("Scene References")]
+        [SerializeField] private PlayerController _localPlayer;
+        [SerializeField] private CourseStart _startPad;
+
         private RaceState _state = RaceState.Lobby;
         private readonly List<NetworkPlayerProxy> _proxies = new List<NetworkPlayerProxy>();
-        private PlayerController _localPlayer;
-        private CourseStart _startPad;
         private float _snapshotTimer;
         private float _raceStartTime;
 
@@ -50,11 +52,20 @@ namespace BuildAndBounce.Net
 
         public static event Action<RaceState> OnRaceStateChanged;
 
+        private void Awake()
+        {
+            if (_localPlayer == null)
+            {
+                Debug.LogError("[RealtimeRaceLobby] PlayerController reference is missing! Wire it in Inspector.", this);
+            }
+            if (_startPad == null)
+            {
+                Debug.LogError("[RealtimeRaceLobby] CourseStart reference is missing! Wire it in Inspector.", this);
+            }
+        }
+
         private void Start()
         {
-            _localPlayer = UnityEngine.Object.FindAnyObjectByType<PlayerController>();
-            _startPad = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
-
             if (_simulateRemoteRacers)
             {
                 SpawnSimulatedRacers();

@@ -33,10 +33,14 @@ namespace BuildAndBounce.Race
 
         private void Awake()
         {
-            if (_recorder == null) _recorder = GetComponent<GhostRecorder>() ?? gameObject.AddComponent<GhostRecorder>();
-            if (_playback == null) _playback = GetComponent<GhostPlayback>() ?? gameObject.AddComponent<GhostPlayback>();
-            if (_leaderboards == null) _leaderboards = UnityEngine.Object.FindAnyObjectByType<LeaderboardManager>() ?? gameObject.AddComponent<LeaderboardManager>();
-            if (_timer == null) _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+            if (_recorder == null) _recorder = GetComponent<GhostRecorder>();
+            if (_playback == null) _playback = GetComponent<GhostPlayback>();
+            if (_leaderboards == null) _leaderboards = GetComponent<LeaderboardManager>();
+
+            if (_recorder == null) Debug.LogError("[RaceGhostManager] GhostRecorder reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
+            if (_playback == null) Debug.LogError("[RaceGhostManager] GhostPlayback reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
+            if (_leaderboards == null) Debug.LogError("[RaceGhostManager] LeaderboardManager reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
+            if (_timer == null) Debug.LogError("[RaceGhostManager] CourseTimer reference is missing! Wire it in Inspector or run Race Setup Tool.", this);
         }
 
         private void OnEnable()

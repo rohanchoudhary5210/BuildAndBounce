@@ -162,6 +162,19 @@ namespace BuildAndBounce.Editor
             }
             soController.ApplyModifiedProperties();
 
+            // Wire PlayerRespawn CourseStart
+            if (player.TryGetComponent<PlayerRespawn>(out var respawn))
+            {
+                var startPad = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Level.CourseStart>();
+                if (startPad != null)
+                {
+                    var soRespawn = new SerializedObject(respawn);
+                    var propStart = soRespawn.FindProperty("_courseStart");
+                    if (propStart != null) propStart.objectReferenceValue = startPad;
+                    soRespawn.ApplyModifiedProperties();
+                }
+            }
+
             EditorUtility.SetDirty(player);
             EditorSceneManager.MarkSceneDirty(player.scene);
 

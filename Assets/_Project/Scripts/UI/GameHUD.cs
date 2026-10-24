@@ -27,7 +27,10 @@ namespace BuildAndBounce.UI
         [SerializeField] private GameObject _finishBanner;
         [SerializeField] private TextMeshProUGUI _finishSummaryText;
 
-        private CourseTimer _timer;
+        [Header("Scene References")]
+        [SerializeField] private CourseTimer _timer;
+        [SerializeField] private LevelBuilder _levelBuilder;
+
         private float _bestTime;
         private string _bestTimeKey;
         private Coroutine _checkpointAnimRoutine;
@@ -40,7 +43,16 @@ namespace BuildAndBounce.UI
 
             if (_timer == null)
             {
-                _timer = GetComponentInParent<CourseTimer>() ?? UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+                _timer = GetComponentInParent<CourseTimer>();
+                if (_timer == null)
+                {
+                    Debug.LogError("[GameHUD] CourseTimer reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+                }
+            }
+
+            if (_levelBuilder == null)
+            {
+                Debug.LogError("[GameHUD] LevelBuilder reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
             }
 
             if (_timerText == null)
@@ -55,15 +67,9 @@ namespace BuildAndBounce.UI
 
         private void Start()
         {
-            if (_timer == null)
+            if (_levelBuilder != null)
             {
-                _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
-            }
-
-            var builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
-            if (builder != null)
-            {
-                HandleModeChanged(builder.CurrentMode);
+                HandleModeChanged(_levelBuilder.CurrentMode);
             }
         }
 
