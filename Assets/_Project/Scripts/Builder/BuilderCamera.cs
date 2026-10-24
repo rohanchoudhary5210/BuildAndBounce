@@ -21,6 +21,20 @@ namespace BuildAndBounce.Builder
 
         private void Awake()
         {
+            // Builder camera must never duplicate the primary AudioListener on Main Camera
+            if (TryGetComponent<AudioListener>(out var listener))
+            {
+                listener.enabled = false;
+                if (Application.isPlaying)
+                {
+                    Destroy(listener);
+                }
+                else
+                {
+                    DestroyImmediate(listener);
+                }
+            }
+
             _camera = GetComponent<Camera>();
             Vector3 angles = transform.eulerAngles;
             _yaw = angles.y;

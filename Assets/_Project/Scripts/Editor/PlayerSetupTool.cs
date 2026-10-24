@@ -1,3 +1,4 @@
+using BuildAndBounce.Core;
 using BuildAndBounce.Player;
 using Unity.Cinemachine;
 using Unity.Cinemachine.TargetTracking;
@@ -231,6 +232,13 @@ namespace BuildAndBounce.Editor
             brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.EaseInOut, 0.4f);
             brain.UpdateMethod = CinemachineBrain.UpdateMethods.SmartUpdate;
             EditorUtility.SetDirty(brain);
+
+            // Ensure AudioListener on Main Camera and audit for duplicates in scene
+            if (!mainCam.TryGetComponent<AudioListener>(out _))
+            {
+                Undo.AddComponent<AudioListener>(mainCam.gameObject);
+            }
+            AudioListenerGuard.EnforceSingleListener();
 
             // 2. Find or create CinemachineCamera GameObject
             var vcam = UnityEngine.Object.FindAnyObjectByType<CinemachineCamera>();

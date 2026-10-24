@@ -1,4 +1,5 @@
 using BuildAndBounce.Builder;
+using BuildAndBounce.Core;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,12 +9,32 @@ namespace BuildAndBounce.Editor
     /// <summary>
     /// Editor setup tool to configure the M3 Level Builder (UGC) system:
     /// - Creates/wires the LevelBuilder manager and BuilderGrid.
-    /// - Creates a dedicated BuilderCamera for free-flight editing.
+    /// - Creates a dedicated BuilderCamera for free-flight editing (without duplicating AudioListener).
     /// - Generates or wires the BlockCatalog ScriptableObject asset.
     /// - Configures the BuilderHUD UI overlay.
     /// </summary>
     public static class BuilderSetupTool
     {
+        [MenuItem("Build & Bounce/Fix Audio Listeners")]
+        public static void FixAudioListeners()
+        {
+            var primary = AudioListenerGuard.EnforceSingleListener();
+            if (primary != null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Audio Listeners Fixed",
+                    $"Successfully audited AudioListeners!\n\nSingle active AudioListener is on: '{primary.gameObject.name}'.",
+                    "OK");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog(
+                    "Audio Listeners",
+                    "No cameras or AudioListeners found in scene.",
+                    "OK");
+            }
+        }
+
         [MenuItem("Build & Bounce/Setup Level Builder")]
         public static void SetupLevelBuilder()
         {
@@ -28,10 +49,21 @@ namespace BuildAndBounce.Editor
                 Undo.RegisterCreatedObjectUndo(camObj, "Create Builder Camera");
                 var cam = camObj.AddComponent<Camera>();
                 cam.clearFlags = CameraClearFlags.Skybox;
-                camObj.AddComponent<AudioListener>(); // Builder audio listener
                 builderCam = camObj.AddComponent<BuilderCamera>();
                 builderCam.FocusOn(new Vector3(0f, 0f, 10f), 20f);
+                camObj.SetActive(false); // Inactive until Build Mode is toggled
             }
+            else
+            {
+                // Ensure no stray AudioListener exists on BuilderCamera
+                if (builderCam.TryGetComponent<AudioListener>(out var strayListener))
+                {
+                    Undo.DestroyObjectImmediate(strayListener);
+                }
+            }
+
+            // Ensure exactly one AudioListener exists in the scene (on Main Camera)
+            AudioListenerGuard.EnforceSingleListener();
 
             // 3. Find or create LevelBuilder root
             var builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>(FindObjectsInactive.Include);
