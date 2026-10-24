@@ -16,9 +16,8 @@ namespace BuildAndBounce.Net
     }
 
     /// <summary>
-    /// Coordinates 2–4 player live multiplayer races (M6).
-    /// Handles spawn positioning, snapshot broadcasting, remote player proxy lifecycle,
-    /// and includes a local simulated bots mode for instant recruiter evaluation without needing a second device.
+    /// Coordinates offline bot race (no networking yet) and experimental race proxies.
+    /// Handles spawn positioning, snapshot broadcasting, and optional offline simulated racer bots.
     /// </summary>
     public class RealtimeRaceLobby : MonoBehaviour
     {
@@ -26,8 +25,8 @@ namespace BuildAndBounce.Net
         [Tooltip("Maximum allowed players in a race session.")]
         [SerializeField] private int _maxPlayers = 4;
 
-        [Tooltip("Simulate 3 remote players locally if testing in single-instance editor.")]
-        [SerializeField] private bool _simulateRemoteRacers = true;
+        [Tooltip("Offline bot race (no networking yet). Simulates 3 offline racer bots locally.")]
+        [SerializeField] private bool _simulateRemoteRacers = false;
 
         [Tooltip("Distinct colors assigned to players 1 through 4.")]
         [SerializeField] private Color[] _playerColors = new Color[]
