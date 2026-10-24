@@ -16,49 +16,49 @@ MonoBehaviour:
   - _id: start_pad
     _displayName: Start Pad
     _category: 1
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000001, type: 3}
     _dimensions: {x: 4, y: 0.5, z: 4}
     _themeColor: {r: 0.2, g: 0.85, b: 0.35, a: 1}
     _icon: {fileID: 0}
   - _id: finish_pad
     _displayName: Finish Pad
     _category: 1
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000002, type: 3}
     _dimensions: {x: 5, y: 0.5, z: 5}
     _themeColor: {r: 1, g: 0.65, b: 0.1, a: 1}
     _icon: {fileID: 0}
   - _id: platform_cube_1x1
     _displayName: 1x1 Block
     _category: 0
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000003, type: 3}
     _dimensions: {x: 1, y: 1, z: 1}
     _themeColor: {r: 0.6, g: 0.6, b: 0.7, a: 1}
     _icon: {fileID: 0}
   - _id: platform_step_3x3
     _displayName: 3x3 Platform
     _category: 0
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000004, type: 3}
     _dimensions: {x: 3, y: 0.5, z: 3}
     _themeColor: {r: 0.45, g: 0.5, b: 0.65, a: 1}
     _icon: {fileID: 0}
   - _id: checkpoint_pad
     _displayName: Checkpoint
     _category: 2
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000005, type: 3}
     _dimensions: {x: 3, y: 0.5, z: 3}
     _themeColor: {r: 0.9, g: 0.85, b: 0.2, a: 1}
     _icon: {fileID: 0}
   - _id: hazard_spikes
     _displayName: Hazard
     _category: 4
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000006, type: 3}
     _dimensions: {x: 2, y: 0.3, z: 2}
     _themeColor: {r: 0.9, g: 0.2, b: 0.25, a: 1}
     _icon: {fileID: 0}
   - _id: moving_platform
     _displayName: Moving Platform
     _category: 3
-    _prefab: {fileID: 0}
+    _prefab: {fileID: 100000, guid: a1000000000000000000000000000007, type: 3}
     _dimensions: {x: 3, y: 0.5, z: 3}
     _themeColor: {r: 0.2, g: 0.75, b: 0.95, a: 1}
     _icon: {fileID: 0}

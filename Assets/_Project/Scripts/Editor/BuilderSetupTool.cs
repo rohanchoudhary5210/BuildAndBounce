@@ -38,7 +38,8 @@ namespace BuildAndBounce.Editor
         [MenuItem("Build & Bounce/Setup Level Builder")]
         public static void SetupLevelBuilder()
         {
-            // 1. Ensure BlockCatalog asset
+            // 1. Ensure gameplay prefabs and catalog wiring
+            BlockPrefabBuilder.EnsureBlockPrefabsAndCatalog();
             var catalog = EnsureBlockCatalogAsset();
 
             // 2. Find or create Builder Camera
