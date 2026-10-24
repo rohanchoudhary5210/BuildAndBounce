@@ -83,6 +83,20 @@ namespace BuildAndBounce.Editor
                 grid = builder.gameObject.AddComponent<BuilderGrid>();
             }
 
+            // 4b. Configure BuilderInputReader
+            if (!builder.TryGetComponent<BuilderInputReader>(out var inputReader))
+            {
+                inputReader = builder.gameObject.AddComponent<BuilderInputReader>();
+            }
+            var inputActions = AssetDatabase.LoadAssetAtPath<UnityEngine.InputSystem.InputActionAsset>("Assets/InputSystem_Actions.inputactions");
+            if (inputActions != null)
+            {
+                var soReader = new SerializedObject(inputReader);
+                var pAsset = soReader.FindProperty("_actionsAsset");
+                if (pAsset != null) pAsset.objectReferenceValue = inputActions;
+                soReader.ApplyModifiedProperties();
+            }
+
             // 5. Configure BuilderHUD
             var hud = UnityEngine.Object.FindAnyObjectByType<BuilderHUD>(FindObjectsInactive.Include);
             if (hud == null)
@@ -138,6 +152,9 @@ namespace BuildAndBounce.Editor
 
             var propStart = soBuilder.FindProperty("_courseStart");
             if (propStart != null) propStart.objectReferenceValue = startPadComp;
+
+            var propInputReader = soBuilder.FindProperty("_inputReader");
+            if (propInputReader != null) propInputReader.objectReferenceValue = inputReader;
 
             soBuilder.ApplyModifiedProperties();
 

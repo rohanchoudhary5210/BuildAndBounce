@@ -32,6 +32,7 @@ namespace BuildAndBounce.Builder
         [Header("References")]
         [SerializeField] private Transform _courseContainer;
         [SerializeField] private BuilderCamera _builderCamera;
+        [SerializeField] private BuilderInputReader _inputReader;
 
         [Header("Mode Switch References")]
         [SerializeField] private PlayerController _playerController;
@@ -109,6 +110,11 @@ namespace BuildAndBounce.Builder
                 Debug.LogError("[LevelBuilder] CourseStart reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
             }
 
+            if (_inputReader == null)
+            {
+                _inputReader = GetComponent<BuilderInputReader>() ?? gameObject.AddComponent<BuilderInputReader>();
+            }
+
             EnsureCatalogLoaded();
             CreatePreviewMaterial();
         }
@@ -134,8 +140,8 @@ namespace BuildAndBounce.Builder
 
         private void Update()
         {
-            // Toggle mode on Tab
-            if (Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
+            // Toggle mode on Action Map ToggleMode (Tab / Gamepad Select)
+            if (_inputReader != null && _inputReader.ToggleModeTriggered)
             {
                 ToggleMode();
             }
@@ -162,6 +168,12 @@ namespace BuildAndBounce.Builder
             _currentMode = mode;
 
             bool isBuild = _currentMode == BuilderMode.Build;
+
+            if (_inputReader != null)
+            {
+                if (isBuild) _inputReader.EnableBuilderInputs();
+                else _inputReader.DisableBuilderInputs();
+            }
 
             // Toggle preview
             if (_previewInstance != null)
@@ -238,6 +250,22 @@ namespace BuildAndBounce.Builder
             }
         }
 
+        public void SelectNextBlock()
+        {
+            if (_catalog != null && _catalog.Count > 0)
+            {
+                SelectBlock((_selectedBlockIndex + 1) % _catalog.Count);
+            }
+        }
+
+        public void SelectPreviousBlock()
+        {
+            if (_catalog != null && _catalog.Count > 0)
+            {
+                SelectBlock((_selectedBlockIndex - 1 + _catalog.Count) % _catalog.Count);
+            }
+        }
+
         private void HandleBuildInput()
         {
             // Do not build through UI
@@ -246,39 +274,40 @@ namespace BuildAndBounce.Builder
                 return;
             }
 
-            if (Keyboard.current == null || Mouse.current == null) return;
+            if (_inputReader == null) return;
 
-            // Quick palette hotkeys [1] - [7]
-            if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectBlock(0);
-            if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectBlock(1);
-            if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectBlock(2);
-            if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectBlock(3);
-            if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectBlock(4);
-            if (Keyboard.current.digit6Key.wasPressedThisFrame) SelectBlock(5);
-            if (Keyboard.current.digit7Key.wasPressedThisFrame) SelectBlock(6);
+            // Palette navigation (Next / Previous block via Action Map)
+            if (_inputReader.NextBlockTriggered)
+            {
+                SelectNextBlock();
+            }
+            else if (_inputReader.PrevBlockTriggered)
+            {
+                SelectPreviousBlock();
+            }
 
-            // Rotate on R key
-            if (Keyboard.current.rKey.wasPressedThisFrame)
+            // Rotate
+            if (_inputReader.RotateTriggered)
             {
                 RotateBlock();
             }
 
-            // Undo on Ctrl+Z
-            if (Keyboard.current.zKey.wasPressedThisFrame && (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed))
+            // Undo
+            if (_inputReader.UndoTriggered)
             {
                 _history.Undo();
                 return;
             }
 
-            // Redo on Ctrl+Y
-            if (Keyboard.current.yKey.wasPressedThisFrame && (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed))
+            // Redo
+            if (_inputReader.RedoTriggered)
             {
                 _history.Redo();
                 return;
             }
 
-            // Place on Left Click
-            if (Mouse.current.leftButton.wasPressedThisFrame && _isPlacementValid)
+            // Place
+            if (_inputReader.PlaceTriggered && _isPlacementValid)
             {
                 var blockData = _catalog.GetBlock(_selectedBlockIndex);
                 if (blockData != null)
@@ -288,8 +317,8 @@ namespace BuildAndBounce.Builder
                 }
             }
 
-            // Delete on Right Click (when not dragging orbit) or X key
-            if (Keyboard.current.xKey.wasPressedThisFrame)
+            // Delete
+            if (_inputReader.DeleteTriggered)
             {
                 DeleteBlockUnderCursor();
             }
@@ -300,7 +329,8 @@ namespace BuildAndBounce.Builder
             Camera cam = GetBuilderCamera();
             if (cam == null) return;
 
-            Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+            Vector2 screenPos = _inputReader != null ? _inputReader.CursorPosition : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            Ray ray = cam.ScreenPointToRay(screenPos);
             if (Physics.Raycast(ray, out RaycastHit hit, 200f, _buildRaycastLayers))
             {
                 var root = hit.collider.transform;
@@ -324,7 +354,8 @@ namespace BuildAndBounce.Builder
             Camera cam = GetBuilderCamera();
             if (cam == null) return;
 
-            Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+            Vector2 screenPos = _inputReader != null ? _inputReader.CursorPosition : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            Ray ray = cam.ScreenPointToRay(screenPos);
             var blockData = _catalog.GetBlock(_selectedBlockIndex);
             Vector3 dims = blockData != null ? blockData.Dimensions : Vector3.one;
 
