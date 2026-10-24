@@ -14,6 +14,12 @@ namespace BuildAndBounce.Net
         [Tooltip("Buffer delay in seconds behind real-time to allow smooth interpolation.")]
         [SerializeField] private float _interpolationDelay = 0.1f;
 
+        [Tooltip("Speed multiplier for extrapolating or falling back to the latest snapshot when interpolation window is missed.")]
+        [SerializeField] private float _fallbackLerpSpeed = 15f;
+
+        [Tooltip("Maximum number of snapshots retained in the buffer.")]
+        [SerializeField] private int _maxSnapshotBufferSize = 32;
+
         [Header("Visuals")]
         [SerializeField] private MeshRenderer _renderer;
         [SerializeField] private TextMeshPro _nameTag;
@@ -40,7 +46,7 @@ namespace BuildAndBounce.Net
         {
             // Keep buffer ordered by timestamp
             _snapshotBuffer.Add(snapshot);
-            if (_snapshotBuffer.Count > 32)
+            if (_snapshotBuffer.Count > _maxSnapshotBufferSize)
             {
                 _snapshotBuffer.RemoveAt(0);
             }
@@ -75,8 +81,8 @@ namespace BuildAndBounce.Net
 
             // Fallback: extrapolate or use latest snapshot
             var latest = _snapshotBuffer[_snapshotBuffer.Count - 1];
-            transform.position = Vector3.Lerp(transform.position, latest.position, Time.deltaTime * 15f);
-            transform.rotation = Quaternion.Slerp(transform.rotation, latest.rotation, Time.deltaTime * 15f);
+            transform.position = Vector3.Lerp(transform.position, latest.position, Time.deltaTime * _fallbackLerpSpeed);
+            transform.rotation = Quaternion.Slerp(transform.rotation, latest.rotation, Time.deltaTime * _fallbackLerpSpeed);
         }
 
         private void EnsureVisuals()

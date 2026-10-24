@@ -17,6 +17,13 @@ namespace BuildAndBounce.Net
         [Header("Configuration")]
         [SerializeField] private CourseBackendConfig _config;
 
+        [Header("Latency Fallbacks")]
+        [Tooltip("Fallback latency (in seconds) used for course upload/download when config is missing.")]
+        [SerializeField] private float _defaultCourseLatency = 0.25f;
+
+        [Tooltip("Fallback latency (in seconds) used for ghost upload/download when config is missing.")]
+        [SerializeField] private float _defaultGhostLatency = 0.2f;
+
         public static CourseBackendService Instance { get; private set; }
 
         private string CloudSimFolder => Path.Combine(Application.persistentDataPath, "CloudSimulation");
@@ -78,7 +85,7 @@ namespace BuildAndBounce.Net
             if (_config == null || _config.UseSimulationMode || string.IsNullOrEmpty(_config.FirebaseApiKey))
             {
                 // Simulation mode: write to cloud simulation directory with latency
-                float latency = _config != null ? _config.SimulatedLatency : 0.25f;
+                float latency = _config != null ? _config.SimulatedLatency : _defaultCourseLatency;
                 yield return new WaitForSeconds(latency);
 
                 try
@@ -166,7 +173,7 @@ namespace BuildAndBounce.Net
         {
             if (_config == null || _config.UseSimulationMode || string.IsNullOrEmpty(_config.FirebaseApiKey))
             {
-                float latency = _config != null ? _config.SimulatedLatency : 0.25f;
+                float latency = _config != null ? _config.SimulatedLatency : _defaultCourseLatency;
                 yield return new WaitForSeconds(latency);
 
                 string path = Path.Combine(CloudCoursesFolder, $"{shareCode}.json");
@@ -237,7 +244,7 @@ namespace BuildAndBounce.Net
         private IEnumerator UploadGhostRoutine(string courseId, GhostRunData ghost, Action<bool> onComplete)
         {
             string cleanId = ShareCodeGenerator.NormalizeCode(courseId);
-            float latency = _config != null ? _config.SimulatedLatency : 0.2f;
+            float latency = _config != null ? _config.SimulatedLatency : _defaultGhostLatency;
             yield return new WaitForSeconds(latency);
 
             try
@@ -266,7 +273,7 @@ namespace BuildAndBounce.Net
 
         private IEnumerator DownloadGhostRoutine(string courseId, Action<bool, GhostRunData> onComplete)
         {
-            float latency = _config != null ? _config.SimulatedLatency : 0.2f;
+            float latency = _config != null ? _config.SimulatedLatency : _defaultGhostLatency;
             yield return new WaitForSeconds(latency);
 
             string path = Path.Combine(CloudGhostsFolder, $"{courseId}_world_record.json");

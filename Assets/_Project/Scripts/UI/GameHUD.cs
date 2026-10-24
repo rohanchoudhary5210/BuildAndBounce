@@ -27,6 +27,22 @@ namespace BuildAndBounce.UI
         [SerializeField] private GameObject _finishBanner;
         [SerializeField] private TextMeshProUGUI _finishSummaryText;
 
+        [Header("UI Dimensions & Layout")]
+        [Tooltip("Reference resolution for CanvasScaler.")]
+        [SerializeField] private Vector2 _referenceResolution = new Vector2(1920f, 1080f);
+
+        [Tooltip("Size of the live timer container pill.")]
+        [SerializeField] private Vector2 _timerContainerSize = new Vector2(240f, 50f);
+
+        [Tooltip("Size of the personal best container pill.")]
+        [SerializeField] private Vector2 _pbContainerSize = new Vector2(200f, 44f);
+
+        [Tooltip("Size of the animated checkpoint notification banner.")]
+        [SerializeField] private Vector2 _checkpointBannerSize = new Vector2(400f, 60f);
+
+        [Tooltip("Size of the course finish summary banner.")]
+        [SerializeField] private Vector2 _finishBannerSize = new Vector2(500f, 130f);
+
         [Header("Scene References")]
         [SerializeField] private CourseTimer _timer;
         [SerializeField] private LevelBuilder _levelBuilder;
@@ -222,7 +238,7 @@ namespace BuildAndBounce.UI
 
             var scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.referenceResolution = _referenceResolution;
             scaler.matchWidthOrHeight = 0.5f;
 
             canvasObj.AddComponent<GraphicRaycaster>();
@@ -235,7 +251,7 @@ namespace BuildAndBounce.UI
             tcRect.anchorMax = new Vector2(0.5f, 1f);
             tcRect.pivot = new Vector2(0.5f, 1f);
             tcRect.anchoredPosition = new Vector2(0f, -16f);
-            tcRect.sizeDelta = new Vector2(240f, 50f);
+            tcRect.sizeDelta = _timerContainerSize;
 
             var tcImg = timerContainer.AddComponent<Image>();
             tcImg.color = new Color(0.06f, 0.08f, 0.12f, 0.85f);
@@ -262,7 +278,7 @@ namespace BuildAndBounce.UI
             pbCRect.anchorMax = new Vector2(1f, 1f);
             pbCRect.pivot = new Vector2(1f, 1f);
             pbCRect.anchoredPosition = new Vector2(-24f, -16f);
-            pbCRect.sizeDelta = new Vector2(200f, 44f);
+            pbCRect.sizeDelta = _pbContainerSize;
 
             var pbCImg = pbContainer.AddComponent<Image>();
             pbCImg.color = new Color(0.06f, 0.08f, 0.12f, 0.85f);
@@ -288,7 +304,7 @@ namespace BuildAndBounce.UI
             cpRect.anchorMin = new Vector2(0.5f, 0.75f);
             cpRect.anchorMax = new Vector2(0.5f, 0.75f);
             cpRect.pivot = new Vector2(0.5f, 0.5f);
-            cpRect.sizeDelta = new Vector2(400f, 60f);
+            cpRect.sizeDelta = _checkpointBannerSize;
 
             var cpBg = _checkpointBanner.AddComponent<Image>();
             cpBg.color = new Color(0.1f, 0.12f, 0.18f, 0.85f);
@@ -315,7 +331,7 @@ namespace BuildAndBounce.UI
             finRect.anchorMin = new Vector2(0.5f, 0.55f);
             finRect.anchorMax = new Vector2(0.5f, 0.55f);
             finRect.pivot = new Vector2(0.5f, 0.5f);
-            finRect.sizeDelta = new Vector2(500f, 130f);
+            finRect.sizeDelta = _finishBannerSize;
 
             var finBg = _finishBanner.AddComponent<Image>();
             finBg.color = new Color(0.08f, 0.1f, 0.15f, 0.92f);

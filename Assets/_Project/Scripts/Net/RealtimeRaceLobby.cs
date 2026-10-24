@@ -37,6 +37,23 @@ namespace BuildAndBounce.Net
             new Color(0.9f, 0.3f, 0.8f)   // P4: Purple
         };
 
+        [Header("Snapshot Broadcasting")]
+        [Tooltip("Rate in Hertz at which player transform snapshots are broadcast.")]
+        [SerializeField] private float _snapshotRateHz = 20f;
+
+        [Header("Simulated Bot Tunables")]
+        [Tooltip("Base movement speed of simulated bots along the course.")]
+        [SerializeField] private float _baseBotSpeed = 8.5f;
+
+        [Tooltip("Incremental speed added per simulated bot index.")]
+        [SerializeField] private float _botSpeedVariance = 0.7f;
+
+        [Tooltip("Frequency of sinusoidal weaving movement for simulated bots.")]
+        [SerializeField] private float _botWeaveFrequency = 2.5f;
+
+        [Tooltip("Amplitude of sinusoidal weaving movement for simulated bots.")]
+        [SerializeField] private float _botWeaveAmplitude = 0.4f;
+
         [Header("Scene References")]
         [SerializeField] private PlayerController _localPlayer;
         [SerializeField] private CourseStart _startPad;
@@ -87,9 +104,10 @@ namespace BuildAndBounce.Net
         {
             if (_state != RaceState.Racing) return;
 
-            // Broadcast local player transform snapshots at 20 Hz
+            // Broadcast local player transform snapshots at configured rate
+            float snapshotInterval = _snapshotRateHz > 0f ? 1f / _snapshotRateHz : 0.05f;
             _snapshotTimer += Time.deltaTime;
-            if (_snapshotTimer >= 0.05f)
+            if (_snapshotTimer >= snapshotInterval)
             {
                 _snapshotTimer = 0f;
                 BroadcastLocalSnapshot();
@@ -168,10 +186,10 @@ namespace BuildAndBounce.Net
                 if (proxy == null) continue;
 
                 // Move forward along Z with individual speeds and slight sinusoidal weaving
-                float speed = 8.5f + i * 0.7f;
+                float speed = _baseBotSpeed + i * _botSpeedVariance;
                 Vector3 currentPos = proxy.transform.position;
                 currentPos.z += speed * Time.deltaTime;
-                currentPos.x += Mathf.Sin(elapsed * 2.5f + i) * 0.4f * Time.deltaTime;
+                currentPos.x += Mathf.Sin(elapsed * _botWeaveFrequency + i) * _botWeaveAmplitude * Time.deltaTime;
 
                 var snapshot = new NetworkPlayerSnapshot(
                     proxy.PlayerId,
