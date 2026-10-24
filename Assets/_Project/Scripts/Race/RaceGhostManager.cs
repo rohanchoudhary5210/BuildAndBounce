@@ -42,13 +42,11 @@ namespace BuildAndBounce.Race
         private void OnEnable()
         {
             GhostRecorder.OnRunRecorded += HandleRunRecorded;
-            CourseTimer.OnTimerFinished += HandleCourseFinished;
         }
 
         private void OnDisable()
         {
             GhostRecorder.OnRunRecorded -= HandleRunRecorded;
-            CourseTimer.OnTimerFinished -= HandleCourseFinished;
         }
 
         private void Start()
@@ -91,19 +89,18 @@ namespace BuildAndBounce.Race
 
         private void HandleRunRecorded(GhostRunData runData)
         {
+            if (runData == null || _leaderboards == null) return;
+
             _lastRecordedGhost = runData;
-        }
+            string courseId = !string.IsNullOrEmpty(runData.courseId) ? runData.courseId : _activeCourseId;
+            float finishTime = runData.finishTime;
 
-        private void HandleCourseFinished(float finishTime)
-        {
-            if (_leaderboards == null) return;
+            bool isNewBest = _leaderboards.SubmitRun(courseId, _playerName, finishTime, runData);
 
-            bool isNewBest = _leaderboards.SubmitRun(_activeCourseId, _playerName, finishTime, _lastRecordedGhost);
-
-            if (isNewBest && _lastRecordedGhost != null)
+            if (isNewBest)
             {
                 // Immediately reload the new best ghost so the very next run races against it
-                _playback.LoadGhost(_lastRecordedGhost);
+                _playback.LoadGhost(runData);
                 Debug.Log($"[RaceGhostManager] New best ghost active! Time: {CourseTimer.FormatTime(finishTime)}");
             }
         }
