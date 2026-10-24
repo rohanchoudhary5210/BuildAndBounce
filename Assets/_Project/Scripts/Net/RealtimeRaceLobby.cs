@@ -133,8 +133,9 @@ namespace BuildAndBounce.Net
             };
 
             string[] names = new string[] { "SpeedyBob", "AcrobatCat", "RocketRex" };
+            int botCount = Mathf.Clamp(_maxPlayers - 1, 1, 3);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < botCount; i++)
             {
                 var proxyObj = new GameObject($"Proxy_P{i + 2}");
                 proxyObj.transform.SetParent(transform, false);

@@ -29,7 +29,7 @@ namespace BuildAndBounce.Core
         /// <returns>The single active AudioListener in the scene, or null if no camera exists.</returns>
         public static AudioListener EnforceSingleListener()
         {
-            var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Include);
 
             if (listeners == null || listeners.Length == 0)
             {

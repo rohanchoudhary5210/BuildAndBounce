@@ -36,6 +36,8 @@ namespace BuildAndBounce.Player
 
         private Vector2 _moveInput;
         private Vector2 _lookInput;
+        private Vector2 _virtualMoveInput;
+        private bool _hasVirtualMove;
         private bool _jumpTriggered;
         private bool _isJumpHeld;
         private bool _dashTriggered;
@@ -152,7 +154,11 @@ namespace BuildAndBounce.Player
 
         private void PollContinuousInputs()
         {
-            if (_moveAction != null)
+            if (_hasVirtualMove)
+            {
+                _moveInput = _virtualMoveInput;
+            }
+            else if (_moveAction != null)
             {
                 _moveInput = _moveAction.ReadValue<Vector2>();
             }
@@ -166,6 +172,31 @@ namespace BuildAndBounce.Player
             {
                 _isJumpHeld = _jumpAction.IsPressed();
             }
+        }
+
+        public void SetVirtualMoveInput(Vector2 move)
+        {
+            _virtualMoveInput = move;
+            _hasVirtualMove = move.sqrMagnitude > 0.001f;
+        }
+
+        public void TriggerVirtualJumpPress()
+        {
+            _jumpTriggered = true;
+            _isJumpHeld = true;
+            OnJumpPressed?.Invoke();
+        }
+
+        public void TriggerVirtualJumpRelease()
+        {
+            _isJumpHeld = false;
+            OnJumpReleased?.Invoke();
+        }
+
+        public void TriggerVirtualDash()
+        {
+            _dashTriggered = true;
+            OnDashPressed?.Invoke();
         }
 
         private void HandleJumpPerformed(InputAction.CallbackContext context)
