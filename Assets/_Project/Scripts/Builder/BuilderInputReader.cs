@@ -34,14 +34,14 @@ namespace BuildAndBounce.Builder
         private bool _isUsingGamepad;
 
         public Vector2 CursorPosition => _cursorPosition;
-        public bool PlaceTriggered => _placeAction != null && _placeAction.WasPressedThisFrame();
-        public bool DeleteTriggered => _deleteAction != null && _deleteAction.WasPressedThisFrame();
-        public bool RotateTriggered => _rotateAction != null && _rotateAction.WasPressedThisFrame();
-        public bool UndoTriggered => _undoAction != null && _undoAction.WasPressedThisFrame();
-        public bool RedoTriggered => _redoAction != null && _redoAction.WasPressedThisFrame();
-        public bool NextBlockTriggered => _nextBlockAction != null && _nextBlockAction.WasPressedThisFrame();
-        public bool PrevBlockTriggered => _prevBlockAction != null && _prevBlockAction.WasPressedThisFrame();
-        public bool ToggleModeTriggered => _toggleModeAction != null && _toggleModeAction.WasPressedThisFrame();
+        public bool PlaceTriggered => Time.timeScale > 0f && _placeAction != null && _placeAction.WasPressedThisFrame();
+        public bool DeleteTriggered => Time.timeScale > 0f && _deleteAction != null && _deleteAction.WasPressedThisFrame();
+        public bool RotateTriggered => Time.timeScale > 0f && _rotateAction != null && _rotateAction.WasPressedThisFrame();
+        public bool UndoTriggered => Time.timeScale > 0f && _undoAction != null && _undoAction.WasPressedThisFrame();
+        public bool RedoTriggered => Time.timeScale > 0f && _redoAction != null && _redoAction.WasPressedThisFrame();
+        public bool NextBlockTriggered => Time.timeScale > 0f && _nextBlockAction != null && _nextBlockAction.WasPressedThisFrame();
+        public bool PrevBlockTriggered => Time.timeScale > 0f && _prevBlockAction != null && _prevBlockAction.WasPressedThisFrame();
+        public bool ToggleModeTriggered => Time.timeScale > 0f && _toggleModeAction != null && _toggleModeAction.WasPressedThisFrame();
         public bool IsUsingGamepad => _isUsingGamepad;
 
         private void Awake()

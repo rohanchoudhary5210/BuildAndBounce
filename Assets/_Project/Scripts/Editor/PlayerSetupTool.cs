@@ -243,7 +243,7 @@ namespace BuildAndBounce.Editor
                 brain = Undo.AddComponent<CinemachineBrain>(mainCam.gameObject);
             }
             brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.EaseInOut, 0.4f);
-            brain.UpdateMethod = CinemachineBrain.UpdateMethods.SmartUpdate;
+            brain.UpdateMethod = CinemachineBrain.UpdateMethods.LateUpdate;
             EditorUtility.SetDirty(brain);
 
             // Ensure AudioListener on Main Camera and audit for duplicates in scene
@@ -300,27 +300,30 @@ namespace BuildAndBounce.Editor
             orbital.TargetOffset = new Vector3(0f, targetHeight, 0f);
             orbital.OrbitStyle = CinemachineOrbitalFollow.OrbitStyles.Sphere;
 
-            // Pitch axis: start at 15 degrees elevation, range -20 to 60 degrees
+            // Pitch axis: start at 15 degrees elevation, range -20 to 60 degrees, NO auto-recentering
             orbital.VerticalAxis.Value = 15f;
             orbital.VerticalAxis.Center = 15f;
             orbital.VerticalAxis.Range = new Vector2(-20f, 60f);
             orbital.VerticalAxis.Wrap = false;
+            orbital.VerticalAxis.Recentering.Enabled = false;
 
-            // Yaw axis: 360 degree orbit
+            // Yaw axis: 360 degree orbit, NO auto-recentering
             orbital.HorizontalAxis.Value = 0f;
             orbital.HorizontalAxis.Center = 0f;
             orbital.HorizontalAxis.Range = new Vector2(-180f, 180f);
             orbital.HorizontalAxis.Wrap = true;
+            orbital.HorizontalAxis.Recentering.Enabled = false;
 
             // Lock radial scale so look input never shrinks camera distance
             orbital.RadialAxis.Value = 1f;
             orbital.RadialAxis.Center = 1f;
             orbital.RadialAxis.Range = new Vector2(1f, 1f);
             orbital.RadialAxis.Wrap = false;
+            orbital.RadialAxis.Recentering.Enabled = false;
 
-            // Responsive position tracking (no lagging behind)
+            // Firm tracking: zero position & rotation damping prevents camera lag and swaying feedback loops
             orbital.TrackerSettings.BindingMode = BindingMode.WorldSpace;
-            orbital.TrackerSettings.PositionDamping = new Vector3(0.05f, 0.1f, 0.05f);
+            orbital.TrackerSettings.PositionDamping = Vector3.zero;
             orbital.TrackerSettings.RotationDamping = Vector3.zero;
 
             var soOrbital = new SerializedObject(orbital);
@@ -331,14 +334,16 @@ namespace BuildAndBounce.Editor
             soOrbital.ApplyModifiedProperties();
             EditorUtility.SetDirty(orbital);
 
-            // 4. Configure CinemachineRotationComposer (Aim tracking)
+            // 4. Configure CinemachineRotationComposer (Zero damping keeps camera aim rock-solid on player)
             if (!vcam.TryGetComponent<CinemachineRotationComposer>(out var composer))
             {
                 composer = Undo.AddComponent<CinemachineRotationComposer>(vcam.gameObject);
             }
             Undo.RecordObject(composer, "Configure Rotation Composer");
             composer.TargetOffset = new Vector3(0f, targetHeight, 0f);
-            composer.Damping = new Vector2(0.05f, 0.05f);
+            composer.Damping = Vector2.zero;
+            composer.Composition.DeadZone.Enabled = false;
+            composer.Composition.DeadZone.Size = Vector2.zero;
 
             var soComposer = new SerializedObject(composer);
             var compOffsetProp = soComposer.FindProperty("TargetOffset");
@@ -389,17 +394,17 @@ namespace BuildAndBounce.Editor
 
                         if (c.Name.Contains("Look Orbit X") || (c.Name.Contains("Look") && !c.Name.Contains("Y")))
                         {
-                            // Horizontal orbit yaw
+                            // Horizontal orbit yaw - smooth 0.1f gain for pointer delta
                             c.Enabled = true;
                             c.Input.InputAction = lookRef;
-                            c.Input.Gain = 1f;
+                            c.Input.Gain = 0.1f;
                         }
                         else if (c.Name.Contains("Look Orbit Y"))
                         {
                             // Vertical pitch (inverted gain for natural upward tilt when looking up)
                             c.Enabled = true;
                             c.Input.InputAction = lookRef;
-                            c.Input.Gain = -1f;
+                            c.Input.Gain = -0.1f;
                         }
                         else if (c.Name.Contains("Scale") || c.Name.Contains("Zoom"))
                         {

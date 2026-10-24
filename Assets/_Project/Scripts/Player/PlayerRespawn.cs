@@ -37,6 +37,11 @@ namespace BuildAndBounce.Player
 
             if (_courseStart == null)
             {
+                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Include);
+            }
+
+            if (_courseStart == null)
+            {
                 Debug.LogError($"[PlayerRespawn] CourseStart reference is missing on {gameObject.name}. Wire it in Inspector or run Player/Level Setup Tool.", this);
             }
             else

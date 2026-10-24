@@ -84,6 +84,10 @@ namespace BuildAndBounce.Builder
                 _courseContainer = container.transform;
             }
 
+            if (_builderCamera == null)
+            {
+                _builderCamera = FindAnyObjectByType<BuilderCamera>(FindObjectsInactive.Include);
+            }
             if (_builderCamera != null)
             {
                 _cachedBuilderCamera = _builderCamera.GetComponent<Camera>();
@@ -95,19 +99,31 @@ namespace BuildAndBounce.Builder
 
             if (_playerController == null)
             {
-                Debug.LogError("[LevelBuilder] PlayerController reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                _playerController = FindAnyObjectByType<PlayerController>(FindObjectsInactive.Include);
+                if (_playerController == null)
+                {
+                    Debug.LogError("[LevelBuilder] PlayerController reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                }
             }
             if (_playerCamera == null)
             {
-                Debug.LogError("[LevelBuilder] PlayerCamera (CinemachineCamera) reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                _playerCamera = FindAnyObjectByType<CinemachineCamera>(FindObjectsInactive.Include);
+                if (_playerCamera == null)
+                {
+                    Debug.LogError("[LevelBuilder] PlayerCamera (CinemachineCamera) reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                }
             }
             if (_raceGhostManager == null)
             {
-                Debug.LogError("[LevelBuilder] RaceGhostManager reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                _raceGhostManager = FindAnyObjectByType<RaceGhostManager>(FindObjectsInactive.Include);
             }
             if (_courseStart == null)
             {
-                Debug.LogError("[LevelBuilder] CourseStart reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Include);
+                if (_courseStart == null)
+                {
+                    Debug.LogError("[LevelBuilder] CourseStart reference is missing! Wire it in Inspector or run Builder Setup Tool.", this);
+                }
             }
 
             if (_inputReader == null)
@@ -117,6 +133,24 @@ namespace BuildAndBounce.Builder
 
             EnsureCatalogLoaded();
             CreatePreviewMaterial();
+        }
+
+        private void OnEnable()
+        {
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged += HandlePauseStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged -= HandlePauseStateChanged;
+        }
+
+        private void HandlePauseStateChanged(bool isPaused)
+        {
+            if (_previewInstance != null)
+            {
+                _previewInstance.SetActive(!isPaused && _currentMode == BuilderMode.Build);
+            }
         }
 
         private Camera GetBuilderCamera()
@@ -140,6 +174,22 @@ namespace BuildAndBounce.Builder
 
         private void Update()
         {
+            // Do not handle builder inputs if game is paused
+            if (Time.timeScale == 0f)
+            {
+                if (_previewInstance != null && _previewInstance.activeSelf)
+                {
+                    _previewInstance.SetActive(false);
+                }
+                return;
+            }
+
+            // Restore preview if unpaused
+            if (_previewInstance != null && !_previewInstance.activeSelf && _currentMode == BuilderMode.Build)
+            {
+                _previewInstance.SetActive(true);
+            }
+
             // Toggle mode on Action Map ToggleMode (Tab / Gamepad Select)
             if (_inputReader != null && _inputReader.ToggleModeTriggered)
             {
@@ -268,8 +318,8 @@ namespace BuildAndBounce.Builder
 
         private void HandleBuildInput()
         {
-            // Do not build through UI
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            // Do not build through UI or while paused
+            if (Time.timeScale == 0f || (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
             {
                 return;
             }
@@ -312,6 +362,19 @@ namespace BuildAndBounce.Builder
                 var blockData = _catalog.GetBlock(_selectedBlockIndex);
                 if (blockData != null)
                 {
+                    // Enforce exactly 1 start platform at build-time: reject placing duplicate start platforms
+                    if (blockData.Category == BlockCategory.StartFinish && blockData.Id.ToLowerInvariant().Contains("start"))
+                    {
+                        foreach (var placed in _placedBlocks.Values)
+                        {
+                            if (placed.Category == BlockCategory.StartFinish && placed.Id.ToLowerInvariant().Contains("start"))
+                            {
+                                Debug.LogWarning("[LevelBuilder] A Start Platform already exists in the course. Delete the existing one to move it.");
+                                return;
+                            }
+                        }
+                    }
+
                     var cmd = new PlaceBlockCommand(this, blockData, _currentPlacementPosition, Quaternion.Euler(0f, _currentRotationY, 0f));
                     _history.ExecuteCommand(cmd);
                 }

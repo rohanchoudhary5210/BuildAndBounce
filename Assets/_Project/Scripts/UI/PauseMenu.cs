@@ -35,11 +35,19 @@ namespace BuildAndBounce.UI
         {
             if (_courseStart == null)
             {
-                Debug.LogError("[PauseMenu] CourseStart reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Include);
+                if (_courseStart == null)
+                {
+                    Debug.LogError("[PauseMenu] CourseStart reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+                }
             }
             if (_playerRespawn == null)
             {
-                Debug.LogError("[PauseMenu] PlayerRespawn reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+                _playerRespawn = FindAnyObjectByType<PlayerRespawn>(FindObjectsInactive.Include);
+                if (_playerRespawn == null)
+                {
+                    Debug.LogError("[PauseMenu] PlayerRespawn reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
+                }
             }
 
             if (_menuPanel == null)
@@ -161,6 +169,7 @@ namespace BuildAndBounce.UI
 
             var bgImg = _menuPanel.AddComponent<Image>();
             bgImg.color = new Color(0.05f, 0.07f, 0.12f, 0.88f);
+            bgImg.raycastTarget = true;
 
             // Container Box
             var boxObj = new GameObject("Box");
