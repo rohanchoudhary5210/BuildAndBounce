@@ -78,8 +78,38 @@ namespace BuildAndBounce.Player
             _remainingJumps = _data.MaxJumps;
         }
 
+        private void OnEnable()
+        {
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged += HandlePauseStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged -= HandlePauseStateChanged;
+        }
+
+        private void HandlePauseStateChanged(bool isPaused)
+        {
+            if (!isPaused)
+            {
+                ClearJumpBuffer();
+            }
+        }
+
+        public void ClearJumpBuffer()
+        {
+            _jumpBufferTimer = 0f;
+            if (_inputReader != null)
+            {
+                _inputReader.ConsumeJumpTrigger();
+                _inputReader.ConsumeDashTrigger();
+            }
+        }
+
         private void Update()
         {
+            if (Time.timeScale == 0f) return;
+
             // Jump buffer is polled in Update to capture rapid taps between physics frames
             if (_inputReader.JumpTriggered)
             {

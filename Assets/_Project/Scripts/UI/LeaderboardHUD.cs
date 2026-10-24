@@ -41,12 +41,22 @@ namespace BuildAndBounce.UI
         {
             CourseTimer.OnTimerStarted += HandleTimerStarted;
             CourseTimer.OnTimerFinished += HandleTimerFinished;
+            PauseMenu.OnPauseStateChanged += HandlePauseStateChanged;
         }
 
         private void OnDisable()
         {
             CourseTimer.OnTimerStarted -= HandleTimerStarted;
             CourseTimer.OnTimerFinished -= HandleTimerFinished;
+            PauseMenu.OnPauseStateChanged -= HandlePauseStateChanged;
+        }
+
+        private void HandlePauseStateChanged(bool isPaused)
+        {
+            if (isPaused && _isOpen)
+            {
+                Hide();
+            }
         }
 
         private void Update()
@@ -54,7 +64,7 @@ namespace BuildAndBounce.UI
             if (!_isOpen) return;
 
             // Allow dismiss with Space, Enter, or Gamepad South
-            if (Keyboard.current != null && (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame))
+            if (Keyboard.current != null && (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame))
             {
                 Hide();
             }

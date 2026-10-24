@@ -81,24 +81,27 @@ namespace BuildAndBounce.Player
         {
             ResolveActions();
             SubscribeActions();
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged += HandlePauseStateChanged;
         }
 
         private void OnDisable()
         {
             UnsubscribeActions();
+            BuildAndBounce.UI.PauseMenu.OnPauseStateChanged -= HandlePauseStateChanged;
             SetCursorLocked(false);
+        }
+
+        private void HandlePauseStateChanged(bool isPaused)
+        {
+            SetCursorLocked(!isPaused);
         }
 
         private void Update()
         {
             PollContinuousInputs();
 
-            // Unlock cursor if Escape is pressed; re-lock when game view is clicked
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                SetCursorLocked(false);
-            }
-            else if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked)
+            // Re-lock cursor when game view is clicked during active play
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked && Time.timeScale > 0f)
             {
                 SetCursorLocked(true);
             }
