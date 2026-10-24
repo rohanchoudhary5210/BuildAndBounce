@@ -47,12 +47,24 @@ namespace BuildAndBounce.Player
         {
             Checkpoint.OnCheckpointActivated += HandleCheckpointActivated;
             KillZone.OnPlayerEnteredKillZone += HandleKillZoneEntered;
+            CourseStart.OnCourseReset += HandleCourseReset;
         }
 
         private void OnDisable()
         {
             Checkpoint.OnCheckpointActivated -= HandleCheckpointActivated;
             KillZone.OnPlayerEnteredKillZone -= HandleKillZoneEntered;
+            CourseStart.OnCourseReset -= HandleCourseReset;
+        }
+
+        private void HandleCourseReset()
+        {
+            var start = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
+            if (start != null)
+            {
+                _respawnPosition = start.SpawnPosition;
+                _respawnRotation = start.SpawnRotation;
+            }
         }
 
         private void HandleCheckpointActivated(Checkpoint checkpoint)

@@ -14,6 +14,22 @@ namespace BuildAndBounce.Level
         [SerializeField] private Transform _spawnPoint;
 
         public static event Action OnCourseStarted;
+        public static event Action OnCourseReset;
+
+        public static void TriggerCourseReset()
+        {
+            OnCourseReset?.Invoke();
+        }
+
+        private void OnEnable()
+        {
+            OnCourseReset += ResetStart;
+        }
+
+        private void OnDisable()
+        {
+            OnCourseReset -= ResetStart;
+        }
 
         public Vector3 SpawnPosition => _spawnPoint != null 
             ? _spawnPoint.position 

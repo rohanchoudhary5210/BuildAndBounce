@@ -111,19 +111,15 @@ namespace BuildAndBounce.UI
         {
             Resume();
 
-            // Reset timer
-            var timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
-            if (timer != null)
-            {
-                timer.ResetTimer();
-            }
+            // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
+            CourseStart.TriggerCourseReset();
 
-            // Teleport player back to start
+            // Teleport player back to start spawn position and rotation
             var start = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
             var respawn = UnityEngine.Object.FindAnyObjectByType<PlayerRespawn>();
             if (respawn != null && start != null)
             {
-                respawn.RespawnAt(start.transform.position + Vector3.up * 1.5f);
+                respawn.RespawnAt(start.SpawnPosition, start.SpawnRotation);
             }
         }
 

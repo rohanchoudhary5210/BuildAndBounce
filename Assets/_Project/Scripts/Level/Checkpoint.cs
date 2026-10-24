@@ -25,8 +25,27 @@ namespace BuildAndBounce.Level
         [SerializeField] private Color _activeColor = new Color(0.2f, 0.9f, 0.3f);
 
         private bool _isActivated;
+        private Color _defaultColor;
 
         public static event Action<Checkpoint> OnCheckpointActivated;
+
+        private void Awake()
+        {
+            if (_indicatorRenderer != null && _indicatorRenderer.sharedMaterial != null)
+            {
+                _defaultColor = _indicatorRenderer.sharedMaterial.color;
+            }
+        }
+
+        private void OnEnable()
+        {
+            CourseStart.OnCourseReset += ResetCheckpoint;
+        }
+
+        private void OnDisable()
+        {
+            CourseStart.OnCourseReset -= ResetCheckpoint;
+        }
 
         public Vector3 RespawnPosition => _respawnPoint != null 
             ? _respawnPoint.position 
@@ -63,6 +82,10 @@ namespace BuildAndBounce.Level
         public void ResetCheckpoint()
         {
             _isActivated = false;
+            if (_indicatorRenderer != null)
+            {
+                _indicatorRenderer.material.color = _defaultColor;
+            }
         }
 
         private void OnDrawGizmos()

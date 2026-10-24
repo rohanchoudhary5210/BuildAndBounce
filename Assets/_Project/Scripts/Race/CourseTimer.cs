@@ -29,12 +29,14 @@ namespace BuildAndBounce.Race
         {
             CourseStart.OnCourseStarted += HandleCourseStarted;
             CourseFinish.OnCourseFinished += HandleCourseFinished;
+            CourseStart.OnCourseReset += ResetTimer;
         }
 
         private void OnDisable()
         {
             CourseStart.OnCourseStarted -= HandleCourseStarted;
             CourseFinish.OnCourseFinished -= HandleCourseFinished;
+            CourseStart.OnCourseReset -= ResetTimer;
         }
 
         private void Update()

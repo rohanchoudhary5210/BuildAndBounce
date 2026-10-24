@@ -16,6 +16,16 @@ namespace BuildAndBounce.Level
 
         public bool IsCompleted => _isCompleted;
 
+        private void OnEnable()
+        {
+            CourseStart.OnCourseReset += ResetFinish;
+        }
+
+        private void OnDisable()
+        {
+            CourseStart.OnCourseReset -= ResetFinish;
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (_isCompleted) return;

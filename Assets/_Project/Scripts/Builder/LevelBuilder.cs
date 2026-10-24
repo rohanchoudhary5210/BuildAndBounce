@@ -138,17 +138,15 @@ namespace BuildAndBounce.Builder
 
                 if (!isBuild)
                 {
-                    // Find start position
+                    // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
+                    CourseStart.TriggerCourseReset();
+
                     var startPad = UnityEngine.Object.FindAnyObjectByType<CourseStart>();
                     var respawn = player.GetComponent<PlayerRespawn>();
                     if (startPad != null && respawn != null)
                     {
                         respawn.RespawnAt(startPad.SpawnPosition, startPad.SpawnRotation);
                     }
-
-                    // Reset course timer
-                    var timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
-                    if (timer != null) timer.ResetTimer();
                 }
             }
 

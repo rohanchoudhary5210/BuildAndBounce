@@ -43,12 +43,22 @@ namespace BuildAndBounce.Race
         {
             CourseStart.OnCourseStarted += HandleCourseStarted;
             CourseFinish.OnCourseFinished += HandleCourseFinished;
+            CourseStart.OnCourseReset += ResetRecording;
         }
 
         private void OnDisable()
         {
             CourseStart.OnCourseStarted -= HandleCourseStarted;
             CourseFinish.OnCourseFinished -= HandleCourseFinished;
+            CourseStart.OnCourseReset -= ResetRecording;
+        }
+
+        public void ResetRecording()
+        {
+            _isRecording = false;
+            _currentRunTime = 0f;
+            _timeSinceLastSample = 0f;
+            _recordedFrames.Clear();
         }
 
         public void SetTarget(Transform target)
