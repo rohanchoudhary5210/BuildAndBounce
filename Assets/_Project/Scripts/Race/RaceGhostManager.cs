@@ -59,6 +59,15 @@ namespace BuildAndBounce.Race
         public void SetCourseId(string courseId)
         {
             _activeCourseId = string.IsNullOrEmpty(courseId) ? "test_course" : courseId;
+            if (_recorder != null)
+            {
+                _recorder.SetCourseId(_activeCourseId);
+            }
+            else
+            {
+                var rec = GetComponent<GhostRecorder>() ?? UnityEngine.Object.FindAnyObjectByType<GhostRecorder>();
+                if (rec != null) rec.SetCourseId(_activeCourseId);
+            }
             LoadBestGhostForActiveCourse();
         }
 

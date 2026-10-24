@@ -138,6 +138,14 @@ namespace BuildAndBounce.Builder
 
                 if (!isBuild)
                 {
+                    // Set active course ID for ghost recording and playback
+                    var course = ExportCourseData();
+                    var ghostManager = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Race.RaceGhostManager>();
+                    if (ghostManager != null && course != null)
+                    {
+                        ghostManager.SetCourseId(course.shareCode);
+                    }
+
                     // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
                     CourseStart.TriggerCourseReset();
 
@@ -445,6 +453,12 @@ namespace BuildAndBounce.Builder
 
             Debug.Log($"[LevelBuilder] Loaded course '{data.courseName}' with {data.blocks.Count} blocks (Code: {data.shareCode})");
             OnBlockCountChanged?.Invoke(_placedBlocks.Count);
+
+            var ghostManager = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Race.RaceGhostManager>();
+            if (ghostManager != null)
+            {
+                ghostManager.SetCourseId(data.shareCode);
+            }
         }
 
         public void ClearCourse()

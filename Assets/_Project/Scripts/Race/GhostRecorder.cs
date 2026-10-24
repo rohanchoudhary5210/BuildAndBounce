@@ -18,6 +18,10 @@ namespace BuildAndBounce.Race
         [Tooltip("Sample rate in Hertz (e.g. 20 Hz = 20 samples per second, 1 every 50ms).")]
         [SerializeField] private float _sampleRate = 20f;
 
+        [Header("Course Identifier")]
+        [Tooltip("Identifier of the course being recorded.")]
+        [SerializeField] private string _courseId = "default";
+
         private float _sampleInterval;
         private float _timeSinceLastSample;
         private bool _isRecording;
@@ -26,8 +30,14 @@ namespace BuildAndBounce.Race
 
         public bool IsRecording => _isRecording;
         public int RecordedFrameCount => _recordedFrames.Count;
+        public string CourseId => _courseId;
 
         public static event Action<GhostRunData> OnRunRecorded;
+
+        public void SetCourseId(string courseId)
+        {
+            _courseId = string.IsNullOrEmpty(courseId) ? "default" : courseId;
+        }
 
         private void Awake()
         {
@@ -105,7 +115,7 @@ namespace BuildAndBounce.Race
                 _recordedFrames.Add(new GhostFrame(_currentRunTime, _target.position, _target.rotation));
             }
 
-            var runData = new GhostRunData("default", "Player", _currentRunTime);
+            var runData = new GhostRunData(_courseId, "Player", _currentRunTime);
             runData.frames.AddRange(_recordedFrames);
 
             OnRunRecorded?.Invoke(runData);
