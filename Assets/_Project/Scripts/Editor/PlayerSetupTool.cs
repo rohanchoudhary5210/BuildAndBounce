@@ -121,14 +121,96 @@ namespace BuildAndBounce.Editor
             }
             soController.ApplyModifiedProperties();
 
+            // 6. Ensure CameraTarget pivot on player
+            EnsureCameraTarget(player);
+
             EditorUtility.SetDirty(player);
             EditorSceneManager.MarkSceneDirty(player.scene);
 
             EditorUtility.DisplayDialog(
                 "Success",
-                "Player references wired successfully!\n\n- Input Actions attached\n- PlayerControllerData attached\n- Camera reference attached",
+                "Player references wired successfully!\n\n- Input Actions attached\n- PlayerControllerData attached\n- Camera target created\n- Camera reference attached",
                 "Awesome");
             Debug.Log("[Build & Bounce] Player references wired successfully!", player);
+        }
+
+        [MenuItem("Build & Bounce/Setup Third-Person Camera")]
+        public static void SetupThirdPersonCamera()
+        {
+            GameObject player = GameObject.Find("Player");
+            if (player == null)
+            {
+                var controller = Object.FindAnyObjectByType<PlayerController>();
+                if (controller != null) player = controller.gameObject;
+            }
+
+            if (player == null)
+            {
+                EditorUtility.DisplayDialog("Camera Setup", "Could not find a GameObject named 'Player' or with a PlayerController component in the scene.", "OK");
+                return;
+            }
+
+            Camera mainCam = Camera.main;
+            if (mainCam == null)
+            {
+                EditorUtility.DisplayDialog("Camera Setup", "Could not find a Main Camera in the active scene.", "OK");
+                return;
+            }
+
+            Undo.RegisterFullObjectHierarchyUndo(mainCam.gameObject, "Setup Third-Person Camera");
+
+            // Ensure CameraTarget exists on Player
+            CameraTarget camTarget = EnsureCameraTarget(player);
+
+            // Add or retrieve ThirdPersonCameraController
+            if (!mainCam.TryGetComponent<ThirdPersonCameraController>(out var cameraController))
+            {
+                cameraController = mainCam.gameObject.AddComponent<ThirdPersonCameraController>();
+            }
+
+            player.TryGetComponent<PlayerInputReader>(out var inputReader);
+            cameraController.Configure(camTarget.transform, inputReader);
+
+            // Also ensure PlayerController references this camera
+            if (player.TryGetComponent<PlayerController>(out var playerController))
+            {
+                var soController = new SerializedObject(playerController);
+                var propCam = soController.FindProperty("_cameraTransform");
+                if (propCam != null)
+                {
+                    propCam.objectReferenceValue = mainCam.transform;
+                }
+                soController.ApplyModifiedProperties();
+            }
+
+            // Position camera nicely behind the player initially
+            Vector3 initialCamPos = camTarget.transform.position - player.transform.forward * 5f + Vector3.up * 1.5f;
+            mainCam.transform.position = initialCamPos;
+            mainCam.transform.LookAt(camTarget.transform.position);
+
+            EditorUtility.SetDirty(mainCam);
+            EditorUtility.SetDirty(player);
+            EditorSceneManager.MarkSceneDirty(player.scene);
+
+            EditorUtility.DisplayDialog(
+                "Camera Setup Complete",
+                "Third-Person Camera with SphereCast collision configured successfully!\n\n- Target: Player/CameraTarget\n- Collision: LayerMask enabled (avoids walls/floors)\n- Controls: Mouse and Gamepad Right-Stick",
+                "Great!");
+            Debug.Log("[Build & Bounce] Third-person camera configured successfully!", mainCam);
+        }
+
+        private static CameraTarget EnsureCameraTarget(GameObject player)
+        {
+            CameraTarget targetComp = player.GetComponentInChildren<CameraTarget>();
+            if (targetComp == null)
+            {
+                GameObject targetObj = new GameObject("CameraTarget");
+                targetObj.transform.SetParent(player.transform, false);
+                targetObj.transform.localPosition = new Vector3(0f, 1.4f, 0f);
+                targetComp = targetObj.AddComponent<CameraTarget>();
+                Undo.RegisterCreatedObjectUndo(targetObj, "Create CameraTarget");
+            }
+            return targetComp;
         }
 
         private static PlayerControllerData EnsurePlayerControllerDataAsset()

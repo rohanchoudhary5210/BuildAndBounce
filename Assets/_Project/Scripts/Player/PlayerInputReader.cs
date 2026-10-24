@@ -20,6 +20,9 @@ namespace BuildAndBounce.Player
         [Tooltip("Explicit Move action reference (Vector2).")]
         [SerializeField] private InputActionReference _moveActionRef;
 
+        [Tooltip("Explicit Look action reference (Vector2).")]
+        [SerializeField] private InputActionReference _lookActionRef;
+
         [Tooltip("Explicit Jump action reference (Button).")]
         [SerializeField] private InputActionReference _jumpActionRef;
 
@@ -27,15 +30,18 @@ namespace BuildAndBounce.Player
         [SerializeField] private InputActionReference _dashActionRef;
 
         private InputAction _moveAction;
+        private InputAction _lookAction;
         private InputAction _jumpAction;
         private InputAction _dashAction;
 
         private Vector2 _moveInput;
+        private Vector2 _lookInput;
         private bool _jumpTriggered;
         private bool _isJumpHeld;
         private bool _dashTriggered;
 
         public Vector2 MoveInput => _moveInput;
+        public Vector2 LookInput => _lookInput;
         public bool JumpTriggered => _jumpTriggered;
         public bool IsJumpHeld => _isJumpHeld;
         public bool DashTriggered => _dashTriggered;
@@ -71,6 +77,7 @@ namespace BuildAndBounce.Player
         private void ResolveActions()
         {
             _moveAction = _moveActionRef != null ? _moveActionRef.action : _playerInput?.actions?.FindAction("Move");
+            _lookAction = _lookActionRef != null ? _lookActionRef.action : _playerInput?.actions?.FindAction("Look");
             _jumpAction = _jumpActionRef != null ? _jumpActionRef.action : _playerInput?.actions?.FindAction("Jump");
             _dashAction = _dashActionRef != null ? _dashActionRef.action : (_playerInput?.actions?.FindAction("Dash") ?? _playerInput?.actions?.FindAction("Sprint"));
         }
@@ -94,6 +101,11 @@ namespace BuildAndBounce.Player
             {
                 _moveAction.Enable();
             }
+
+            if (_lookAction != null)
+            {
+                _lookAction.Enable();
+            }
         }
 
         private void UnsubscribeActions()
@@ -115,6 +127,11 @@ namespace BuildAndBounce.Player
             if (_moveAction != null)
             {
                 _moveInput = _moveAction.ReadValue<Vector2>();
+            }
+
+            if (_lookAction != null)
+            {
+                _lookInput = _lookAction.ReadValue<Vector2>();
             }
 
             if (_jumpAction != null)
