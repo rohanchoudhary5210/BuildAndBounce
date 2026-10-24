@@ -59,11 +59,6 @@ namespace BuildAndBounce.UI
 
         private void Update()
         {
-            if (_inputReader == null)
-            {
-                _inputReader = UnityEngine.Object.FindAnyObjectByType<PlayerInputReader>();
-            }
-
             if (_inputReader != null)
             {
                 _inputReader.SetVirtualMoveInput(_joystickInput);

@@ -46,6 +46,8 @@ namespace BuildAndBounce.Builder
 
         private readonly CommandHistory _history = new CommandHistory(50);
         private readonly Dictionary<GameObject, BlockData> _placedBlocks = new Dictionary<GameObject, BlockData>();
+        private readonly Collider[] _overlapBuffer = new Collider[32];
+        private Camera _cachedBuilderCamera;
 
         private GameObject _previewInstance;
         private Renderer[] _previewRenderers;
@@ -75,8 +77,33 @@ namespace BuildAndBounce.Builder
                 _courseContainer = container.transform;
             }
 
+            if (_builderCamera != null)
+            {
+                _cachedBuilderCamera = _builderCamera.GetComponent<Camera>();
+            }
+            if (_cachedBuilderCamera == null)
+            {
+                _cachedBuilderCamera = Camera.main;
+            }
+
             EnsureCatalogLoaded();
             CreatePreviewMaterial();
+        }
+
+        private Camera GetBuilderCamera()
+        {
+            if (_cachedBuilderCamera == null)
+            {
+                if (_builderCamera != null)
+                {
+                    _cachedBuilderCamera = _builderCamera.GetComponent<Camera>();
+                }
+                if (_cachedBuilderCamera == null)
+                {
+                    _cachedBuilderCamera = Camera.main;
+                }
+            }
+            return _cachedBuilderCamera;
         }
 
         private void Start()
@@ -255,7 +282,7 @@ namespace BuildAndBounce.Builder
 
         private void DeleteBlockUnderCursor()
         {
-            Camera cam = _builderCamera != null ? _builderCamera.GetComponent<Camera>() : Camera.main;
+            Camera cam = GetBuilderCamera();
             if (cam == null) return;
 
             Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
@@ -279,7 +306,7 @@ namespace BuildAndBounce.Builder
         {
             if (_previewInstance == null) return;
 
-            Camera cam = _builderCamera != null ? _builderCamera.GetComponent<Camera>() : Camera.main;
+            Camera cam = GetBuilderCamera();
             if (cam == null) return;
 
             Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
@@ -307,11 +334,11 @@ namespace BuildAndBounce.Builder
         {
             // Small inset to prevent adjacent faces from triggering false collisions
             Vector3 halfExtents = dims * 0.48f;
-            Collider[] overlaps = Physics.OverlapBox(center, halfExtents, Quaternion.Euler(0f, _currentRotationY, 0f), _buildRaycastLayers);
+            int count = Physics.OverlapBoxNonAlloc(center, halfExtents, _overlapBuffer, Quaternion.Euler(0f, _currentRotationY, 0f), _buildRaycastLayers);
 
-            for (int i = 0; i < overlaps.Length; i++)
+            for (int i = 0; i < count; i++)
             {
-                if (overlaps[i].transform.IsChildOf(_courseContainer))
+                if (_overlapBuffer[i] != null && _overlapBuffer[i].transform.IsChildOf(_courseContainer))
                 {
                     return false; // overlapping another placed block
                 }

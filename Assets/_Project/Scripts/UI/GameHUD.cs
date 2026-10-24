@@ -31,11 +31,17 @@ namespace BuildAndBounce.UI
         private float _bestTime;
         private string _bestTimeKey;
         private Coroutine _checkpointAnimRoutine;
+        private int _lastDisplayedMillis = -1;
 
         private void Awake()
         {
             _bestTimeKey = "PB_" + SceneManager.GetActiveScene().name;
             _bestTime = PlayerPrefs.GetFloat(_bestTimeKey, 0f);
+
+            if (_timer == null)
+            {
+                _timer = GetComponentInParent<CourseTimer>() ?? UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+            }
 
             if (_timerText == null)
             {
@@ -49,7 +55,10 @@ namespace BuildAndBounce.UI
 
         private void Start()
         {
-            _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+            if (_timer == null)
+            {
+                _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+            }
 
             var builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
             if (builder != null)
@@ -84,20 +93,19 @@ namespace BuildAndBounce.UI
 
         private void Update()
         {
-            if (_timer == null)
-            {
-                _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
-                return;
-            }
+            if (_timer == null || !_timer.IsRunning || _timerText == null) return;
 
-            if (_timer.IsRunning && _timerText != null)
+            int currentMillis = Mathf.FloorToInt(_timer.ElapsedTime * 1000f);
+            if (currentMillis != _lastDisplayedMillis)
             {
+                _lastDisplayedMillis = currentMillis;
                 _timerText.text = _timer.GetFormattedTime();
             }
         }
 
         private void HandleTimerStarted()
         {
+            _lastDisplayedMillis = -1;
             if (_finishBanner != null) _finishBanner.SetActive(false);
             if (_checkpointBanner != null) _checkpointBanner.SetActive(false);
             if (_timerText != null) _timerText.color = Color.white;
@@ -105,6 +113,7 @@ namespace BuildAndBounce.UI
 
         private void HandleTimerFinished(float finalTime)
         {
+            _lastDisplayedMillis = -1;
             if (_timerText != null)
             {
                 _timerText.text = CourseTimer.FormatTime(finalTime);
