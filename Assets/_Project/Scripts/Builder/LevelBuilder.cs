@@ -390,8 +390,7 @@ namespace BuildAndBounce.Builder
                 var renderer = instance.GetComponent<Renderer>();
                 if (renderer != null)
                 {
-                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                    renderer.material = new Material(shader) { color = data.ThemeColor };
+                    renderer.sharedMaterial = data.SharedMaterial;
                 }
             }
 
@@ -469,6 +468,20 @@ namespace BuildAndBounce.Builder
                 if (kvp.Key != null) Destroy(kvp.Key);
             }
             _placedBlocks.Clear();
+
+            // Destroy any remaining blocks in container, including hidden/inactive ones
+            if (_courseContainer != null)
+            {
+                for (int i = _courseContainer.childCount - 1; i >= 0; i--)
+                {
+                    var child = _courseContainer.GetChild(i);
+                    if (child != null)
+                    {
+                        Destroy(child.gameObject);
+                    }
+                }
+            }
+
             OnBlockCountChanged?.Invoke(0);
         }
 

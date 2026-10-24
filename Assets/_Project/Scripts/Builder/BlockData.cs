@@ -31,6 +31,8 @@ namespace BuildAndBounce.Builder
         [Tooltip("Palette icon (optional).")]
         [SerializeField] private Sprite _icon;
 
+        [NonSerialized] private Material _sharedMaterial;
+
         public string Id => _id;
         public string DisplayName => _displayName;
         public BlockCategory Category => _category;
@@ -38,6 +40,23 @@ namespace BuildAndBounce.Builder
         public Vector3 Dimensions => _dimensions;
         public Color ThemeColor => _themeColor;
         public Sprite Icon => _icon;
+
+        public Material SharedMaterial
+        {
+            get
+            {
+                if (_sharedMaterial == null)
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                    _sharedMaterial = new Material(shader)
+                    {
+                        name = $"{_id}_SharedMaterial",
+                        color = _themeColor
+                    };
+                }
+                return _sharedMaterial;
+            }
+        }
 
         public BlockData(string id, string displayName, BlockCategory category, GameObject prefab, Vector3 dimensions, Color themeColor)
         {

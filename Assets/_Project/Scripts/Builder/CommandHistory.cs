@@ -32,10 +32,17 @@ namespace BuildAndBounce.Builder
             _undoStack.AddLast(command);
             if (_undoStack.Count > _maxCapacity)
             {
+                var dropped = _undoStack.First.Value;
                 _undoStack.RemoveFirst();
+                dropped?.OnDroppedFromHistory();
             }
 
-            _redoStack.Clear();
+            while (_redoStack.Count > 0)
+            {
+                var redoCmd = _redoStack.Pop();
+                redoCmd?.OnDroppedFromHistory();
+            }
+
             OnHistoryChanged?.Invoke();
         }
 
@@ -65,8 +72,17 @@ namespace BuildAndBounce.Builder
 
         public void Clear()
         {
+            foreach (var cmd in _undoStack)
+            {
+                cmd?.OnDroppedFromHistory();
+            }
             _undoStack.Clear();
-            _redoStack.Clear();
+
+            while (_redoStack.Count > 0)
+            {
+                var cmd = _redoStack.Pop();
+                cmd?.OnDroppedFromHistory();
+            }
             OnHistoryChanged?.Invoke();
         }
     }

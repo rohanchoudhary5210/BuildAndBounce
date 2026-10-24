@@ -36,5 +36,13 @@ namespace BuildAndBounce.Builder
                 _builder.RegisterPlacedBlock(_targetBlock, _blockData);
             }
         }
+
+        public void OnDroppedFromHistory()
+        {
+            if (_targetBlock != null && !_targetBlock.activeSelf)
+            {
+                Object.Destroy(_targetBlock);
+            }
+        }
     }
 }

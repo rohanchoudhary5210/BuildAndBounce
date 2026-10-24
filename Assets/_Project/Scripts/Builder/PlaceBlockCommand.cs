@@ -45,5 +45,13 @@ namespace BuildAndBounce.Builder
                 _placedInstance.SetActive(false);
             }
         }
+
+        public void OnDroppedFromHistory()
+        {
+            if (_placedInstance != null && !_placedInstance.activeSelf)
+            {
+                Object.Destroy(_placedInstance);
+            }
+        }
     }
 }

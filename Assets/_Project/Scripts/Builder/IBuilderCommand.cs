@@ -11,5 +11,8 @@ namespace BuildAndBounce.Builder
 
         /// <summary>Reverses the command to restore the previous state.</summary>
         void Undo();
+
+        /// <summary>Invoked when a command falls off the undo/redo history and is permanently discarded.</summary>
+        void OnDroppedFromHistory();
     }
 }
