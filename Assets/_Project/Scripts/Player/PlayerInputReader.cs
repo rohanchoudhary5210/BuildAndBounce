@@ -59,6 +59,22 @@ namespace BuildAndBounce.Player
             }
         }
 
+        private void Start()
+        {
+            SetCursorLocked(true);
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            SetCursorLocked(hasFocus);
+        }
+
+        public void SetCursorLocked(bool locked)
+        {
+            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !locked;
+        }
+
         private void OnEnable()
         {
             ResolveActions();
@@ -68,11 +84,22 @@ namespace BuildAndBounce.Player
         private void OnDisable()
         {
             UnsubscribeActions();
+            SetCursorLocked(false);
         }
 
         private void Update()
         {
             PollContinuousInputs();
+
+            // Unlock cursor if Escape is pressed; re-lock when game view is clicked
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                SetCursorLocked(false);
+            }
+            else if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked)
+            {
+                SetCursorLocked(true);
+            }
         }
 
         private void ResolveActions()

@@ -80,6 +80,11 @@ namespace BuildAndBounce.Editor
 
             if (player != null)
             {
+                if (!player.CompareTag("Player"))
+                {
+                    player.tag = "Player";
+                }
+
                 if (!player.TryGetComponent<PlayerRespawn>(out _))
                 {
                     player.AddComponent<PlayerRespawn>();
@@ -102,6 +107,9 @@ namespace BuildAndBounce.Editor
                 timerObj.transform.SetParent(courseRoot.transform, false);
                 timerObj.AddComponent<CourseTimer>();
             }
+
+            // 9. Automatically setup Cinemachine camera tracking the player
+            PlayerSetupTool.SetupThirdPersonCamera();
 
             EditorUtility.SetDirty(courseRoot);
             if (player != null) EditorUtility.SetDirty(player);

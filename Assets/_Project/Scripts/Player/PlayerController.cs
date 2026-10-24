@@ -55,6 +55,11 @@ namespace BuildAndBounce.Player
             _characterController = GetComponent<CharacterController>();
             _inputReader = GetComponent<PlayerInputReader>();
 
+            if (!gameObject.CompareTag("Player"))
+            {
+                gameObject.tag = "Player";
+            }
+
             if (_cameraTransform == null && Camera.main != null)
             {
                 _cameraTransform = Camera.main.transform;
