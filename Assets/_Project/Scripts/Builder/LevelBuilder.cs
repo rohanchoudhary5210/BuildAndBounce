@@ -400,6 +400,8 @@ namespace BuildAndBounce.Builder
             }
         }
 
+        public CourseData GetCourseData() => ExportCourseData();
+
         public CourseData ExportCourseData(string courseName = "Custom Course")
         {
             var data = new CourseData { courseName = courseName };

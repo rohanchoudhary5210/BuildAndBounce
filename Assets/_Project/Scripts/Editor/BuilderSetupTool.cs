@@ -92,6 +92,24 @@ namespace BuildAndBounce.Editor
                 hud = hudObj.AddComponent<BuilderHUD>();
             }
 
+            // 6. Ensure CourseBackendService and OnlineShareHUD (M5)
+            var backend = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.Net.CourseBackendService>(FindObjectsInactive.Include);
+            if (backend == null)
+            {
+                var backendObj = new GameObject("CourseBackendService");
+                Undo.RegisterCreatedObjectUndo(backendObj, "Create Course Backend Service");
+                backend = backendObj.AddComponent<BuildAndBounce.Net.CourseBackendService>();
+            }
+
+            var shareHud = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.UI.OnlineShareHUD>(FindObjectsInactive.Include);
+            if (shareHud == null)
+            {
+                var shareHudObj = new GameObject("OnlineShareHUD");
+                Undo.RegisterCreatedObjectUndo(shareHudObj, "Create Online Share HUD");
+                shareHudObj.transform.SetParent(builder.transform, false);
+                shareHud = shareHudObj.AddComponent<BuildAndBounce.UI.OnlineShareHUD>();
+            }
+
             // Wire Serialized Properties
             var soBuilder = new SerializedObject(builder);
             var propCatalog = soBuilder.FindProperty("_catalog");
