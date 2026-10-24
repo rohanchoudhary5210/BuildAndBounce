@@ -303,10 +303,30 @@ namespace BuildAndBounce.Player
 
         /// <summary>
         /// Allows moving platforms to apply carrying velocity to the player controller without physics fighting.
+        /// Preserves horizontal platform momentum when jumping off a moving platform.
         /// </summary>
         public void SetPlatformVelocity(Vector3 platformVelocity)
         {
+            // If leaving a moving platform while airborne (e.g. jumped off), carry the platform's momentum into the jump
+            if (platformVelocity == Vector3.zero && _platformVelocity != Vector3.zero && !_isGrounded)
+            {
+                Vector3 preservedHorizontal = new Vector3(_platformVelocity.x, 0f, _platformVelocity.z);
+                _horizontalVelocity += preservedHorizontal;
+            }
+
             _platformVelocity = platformVelocity;
+        }
+
+        /// <summary>
+        /// Resets all internal velocities and active dash states (useful upon respawn or teleportation).
+        /// </summary>
+        public void ResetVelocity()
+        {
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            _platformVelocity = Vector3.zero;
+            _isDashing = false;
+            _dashTimer = 0f;
         }
     }
 }

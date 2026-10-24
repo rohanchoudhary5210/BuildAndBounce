@@ -1,4 +1,5 @@
 using BuildAndBounce.Player;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,39 +9,31 @@ namespace BuildAndBounce.Editor
 {
     /// <summary>
     /// Editor utility to automatically connect and validate references on the Player GameObject
-    /// in the current scene, including Input Actions, PlayerControllerData, and Camera.
+    /// and configure the Cinemachine third-person camera system with collision de-occlusion.
     /// </summary>
     public static class PlayerSetupTool
     {
         [MenuItem("Build & Bounce/Wire Player References")]
         public static void WirePlayerReferences()
         {
-            // 1. Locate Player GameObject in active scene
-            GameObject player = GameObject.Find("Player");
-            if (player == null)
-            {
-                var controller = Object.FindAnyObjectByType<PlayerController>();
-                if (controller != null)
-                {
-                    player = controller.gameObject;
-                }
-            }
-
-            if (player == null)
+            // 1. Locate Player via PlayerController (avoid string-based GameObject.Find)
+            var controller = UnityEngine.Object.FindAnyObjectByType<PlayerController>();
+            if (controller == null)
             {
                 EditorUtility.DisplayDialog(
                     "Wire Player",
-                    "Could not find a GameObject named 'Player' or with a PlayerController component in the active scene.",
+                    "Could not find a GameObject with a PlayerController component in the active scene.",
                     "OK");
                 return;
             }
 
+            GameObject player = controller.gameObject;
             Undo.RegisterFullObjectHierarchyUndo(player, "Wire Player References");
 
             // 2. Configure CharacterController
             if (!player.TryGetComponent<CharacterController>(out var cc))
             {
-                cc = player.AddComponent<CharacterController>();
+                cc = Undo.AddComponent<CharacterController>(player);
             }
 
             // For a standard Unity Capsule primitive, the mesh is centered at local (0, 0, 0).
@@ -52,7 +45,7 @@ namespace BuildAndBounce.Editor
             // Remove redundant CapsuleCollider from the 3D primitive to avoid physics conflicts with CharacterController
             if (player.TryGetComponent<CapsuleCollider>(out var redundantCollider))
             {
-                Object.DestroyImmediate(redundantCollider);
+                Undo.DestroyObjectImmediate(redundantCollider);
             }
 
             // Lift player above floor if currently placed at or below ground
@@ -64,7 +57,7 @@ namespace BuildAndBounce.Editor
             // 3. Configure PlayerInput
             if (!player.TryGetComponent<PlayerInput>(out var playerInput))
             {
-                playerInput = player.AddComponent<PlayerInput>();
+                playerInput = Undo.AddComponent<PlayerInput>(player);
             }
 
             var inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>("Assets/InputSystem_Actions.inputactions");
@@ -88,7 +81,7 @@ namespace BuildAndBounce.Editor
             // 4. Configure PlayerInputReader
             if (!player.TryGetComponent<PlayerInputReader>(out var inputReader))
             {
-                inputReader = player.AddComponent<PlayerInputReader>();
+                inputReader = Undo.AddComponent<PlayerInputReader>(player);
             }
 
             var soReader = new SerializedObject(inputReader);
@@ -99,15 +92,10 @@ namespace BuildAndBounce.Editor
             }
             soReader.ApplyModifiedProperties();
 
-            // 5. Configure PlayerController
-            if (!player.TryGetComponent<PlayerController>(out var playerController))
-            {
-                playerController = player.AddComponent<PlayerController>();
-            }
-
+            // 5. Configure PlayerController Data & Camera
             var dataAsset = EnsurePlayerControllerDataAsset();
 
-            var soController = new SerializedObject(playerController);
+            var soController = new SerializedObject(controller);
             var propData = soController.FindProperty("_data");
             if (propData != null)
             {
@@ -121,15 +109,12 @@ namespace BuildAndBounce.Editor
             }
             soController.ApplyModifiedProperties();
 
-            // 6. Ensure CameraTarget pivot on player
-            EnsureCameraTarget(player);
-
             EditorUtility.SetDirty(player);
             EditorSceneManager.MarkSceneDirty(player.scene);
 
             EditorUtility.DisplayDialog(
                 "Success",
-                "Player references wired successfully!\n\n- Input Actions attached\n- PlayerControllerData attached\n- Camera target created\n- Camera reference attached",
+                "Player references wired successfully!\n\n- Input Actions attached\n- PlayerControllerData attached\n- Camera reference attached",
                 "Awesome");
             Debug.Log("[Build & Bounce] Player references wired successfully!", player);
         }
@@ -137,19 +122,15 @@ namespace BuildAndBounce.Editor
         [MenuItem("Build & Bounce/Setup Third-Person Camera")]
         public static void SetupThirdPersonCamera()
         {
-            GameObject player = GameObject.Find("Player");
-            if (player == null)
+            // Find player via FindAnyObjectByType only (no GameObject.Find)
+            var controller = UnityEngine.Object.FindAnyObjectByType<PlayerController>();
+            if (controller == null)
             {
-                var controller = Object.FindAnyObjectByType<PlayerController>();
-                if (controller != null) player = controller.gameObject;
-            }
-
-            if (player == null)
-            {
-                EditorUtility.DisplayDialog("Camera Setup", "Could not find a GameObject named 'Player' or with a PlayerController component in the scene.", "OK");
+                EditorUtility.DisplayDialog("Camera Setup", "Could not find a PlayerController component in the scene.", "OK");
                 return;
             }
 
+            GameObject player = controller.gameObject;
             Camera mainCam = Camera.main;
             if (mainCam == null)
             {
@@ -157,60 +138,119 @@ namespace BuildAndBounce.Editor
                 return;
             }
 
-            Undo.RegisterFullObjectHierarchyUndo(mainCam.gameObject, "Setup Third-Person Camera");
+            Undo.RegisterFullObjectHierarchyUndo(mainCam.gameObject, "Setup Cinemachine Camera");
 
-            // Ensure CameraTarget exists on Player
-            CameraTarget camTarget = EnsureCameraTarget(player);
-
-            // Add or retrieve ThirdPersonCameraController
-            if (!mainCam.TryGetComponent<ThirdPersonCameraController>(out var cameraController))
+            // 1. Ensure CinemachineBrain on Main Camera
+            if (!mainCam.TryGetComponent<CinemachineBrain>(out var brain))
             {
-                cameraController = mainCam.gameObject.AddComponent<ThirdPersonCameraController>();
+                brain = Undo.AddComponent<CinemachineBrain>(mainCam.gameObject);
+            }
+            brain.DefaultBlend = new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.EaseInOut, 0.4f);
+            EditorUtility.SetDirty(brain);
+
+            // 2. Find or create CinemachineCamera GameObject
+            var vcam = UnityEngine.Object.FindAnyObjectByType<CinemachineCamera>();
+            if (vcam == null)
+            {
+                var vcamObj = new GameObject("CM_ThirdPersonCamera");
+                Undo.RegisterCreatedObjectUndo(vcamObj, "Create Cinemachine Camera");
+                vcam = vcamObj.AddComponent<CinemachineCamera>();
             }
 
-            player.TryGetComponent<PlayerInputReader>(out var inputReader);
-            cameraController.Configure(camTarget.transform, inputReader);
+            Undo.RecordObject(vcam, "Configure Cinemachine Camera");
+            vcam.Target.TrackingTarget = player.transform;
 
-            // Also ensure PlayerController references this camera
-            if (player.TryGetComponent<PlayerController>(out var playerController))
+            // Compute target offset dynamically from player CharacterController bounds
+            float targetHeight = 1.4f;
+            if (player.TryGetComponent<CharacterController>(out var cc))
             {
-                var soController = new SerializedObject(playerController);
-                var propCam = soController.FindProperty("_cameraTransform");
-                if (propCam != null)
+                targetHeight = cc.center.y + (cc.height * 0.25f);
+            }
+
+            // 3. Configure CinemachineOrbitalFollow
+            if (!vcam.TryGetComponent<CinemachineOrbitalFollow>(out var orbital))
+            {
+                orbital = Undo.AddComponent<CinemachineOrbitalFollow>(vcam.gameObject);
+            }
+            Undo.RecordObject(orbital, "Configure Orbital Follow");
+            orbital.TargetOffset = new Vector3(0f, targetHeight, 0f);
+            orbital.Radius = 5.0f;
+            orbital.OrbitStyle = CinemachineOrbitalFollow.OrbitStyles.Sphere;
+            EditorUtility.SetDirty(orbital);
+
+            // 4. Configure CinemachineRotationComposer (Aim tracking)
+            if (!vcam.TryGetComponent<CinemachineRotationComposer>(out var composer))
+            {
+                composer = Undo.AddComponent<CinemachineRotationComposer>(vcam.gameObject);
+            }
+            Undo.RecordObject(composer, "Configure Rotation Composer");
+            composer.TargetOffset = new Vector3(0f, targetHeight, 0f);
+            EditorUtility.SetDirty(composer);
+
+            // 5. Configure CinemachineDeoccluder (Collision avoidance)
+            if (!vcam.TryGetComponent<CinemachineDeoccluder>(out var deoccluder))
+            {
+                deoccluder = Undo.AddComponent<CinemachineDeoccluder>(vcam.gameObject);
+            }
+            Undo.RecordObject(deoccluder, "Configure Deoccluder");
+            deoccluder.CollideAgainst = ~LayerMask.GetMask("Ignore Raycast");
+            deoccluder.IgnoreTag = "Player";
+            deoccluder.AvoidObstacles.Enabled = true;
+            EditorUtility.SetDirty(deoccluder);
+
+            // 6. Configure CinemachineInputAxisController (Drive orbit from Look action)
+            if (!vcam.TryGetComponent<CinemachineInputAxisController>(out var axisController))
+            {
+                axisController = Undo.AddComponent<CinemachineInputAxisController>(vcam.gameObject);
+            }
+            Undo.RecordObject(axisController, "Configure Input Axis Controller");
+            axisController.AutoEnableInputs = true;
+            axisController.SynchronizeControllers();
+
+            var inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>("Assets/InputSystem_Actions.inputactions");
+            if (inputActions != null)
+            {
+                var lookAction = inputActions.FindAction("Player/Look");
+                if (lookAction != null)
                 {
-                    propCam.objectReferenceValue = mainCam.transform;
+                    var lookRef = InputActionReference.Create(lookAction);
+                    foreach (var c in axisController.Controllers)
+                    {
+                        if (c != null && c.Input != null)
+                        {
+                            c.Input.InputAction = lookRef;
+                            c.Input.Gain = 1f;
+                        }
+                    }
                 }
-                soController.ApplyModifiedProperties();
             }
+            EditorUtility.SetDirty(axisController);
 
-            // Position camera nicely behind the player initially
-            Vector3 initialCamPos = camTarget.transform.position - player.transform.forward * 5f + Vector3.up * 1.5f;
-            mainCam.transform.position = initialCamPos;
-            mainCam.transform.LookAt(camTarget.transform.position);
+            // 7. Ensure PlayerController references Main Camera
+            Undo.RecordObject(controller, "Set Camera Transform");
+            var soController = new SerializedObject(controller);
+            var propCam = soController.FindProperty("_cameraTransform");
+            if (propCam != null)
+            {
+                propCam.objectReferenceValue = mainCam.transform;
+            }
+            soController.ApplyModifiedProperties();
 
+            EditorUtility.SetDirty(vcam);
             EditorUtility.SetDirty(mainCam);
             EditorUtility.SetDirty(player);
             EditorSceneManager.MarkSceneDirty(player.scene);
 
             EditorUtility.DisplayDialog(
-                "Camera Setup Complete",
-                "Third-Person Camera with SphereCast collision configured successfully!\n\n- Target: Player/CameraTarget\n- Collision: LayerMask enabled (avoids walls/floors)\n- Controls: Mouse and Gamepad Right-Stick",
-                "Great!");
-            Debug.Log("[Build & Bounce] Third-person camera configured successfully!", mainCam);
-        }
-
-        private static CameraTarget EnsureCameraTarget(GameObject player)
-        {
-            CameraTarget targetComp = player.GetComponentInChildren<CameraTarget>();
-            if (targetComp == null)
-            {
-                GameObject targetObj = new GameObject("CameraTarget");
-                targetObj.transform.SetParent(player.transform, false);
-                targetObj.transform.localPosition = new Vector3(0f, 1.4f, 0f);
-                targetComp = targetObj.AddComponent<CameraTarget>();
-                Undo.RegisterCreatedObjectUndo(targetObj, "Create CameraTarget");
-            }
-            return targetComp;
+                "Cinemachine Configured",
+                "Cinemachine 3 Third-Person Camera configured successfully!\n\n" +
+                "- CinemachineBrain on Main Camera\n" +
+                "- CinemachineCamera with OrbitalFollow (Radius 5m)\n" +
+                "- RotationComposer aiming at player\n" +
+                "- CinemachineDeoccluder (Collision avoidance against obstacles)\n" +
+                "- CinemachineInputAxisController driving orbit from 'Player/Look'",
+                "Awesome!");
+            Debug.Log("[Build & Bounce] Cinemachine 3 camera setup complete!", vcam);
         }
 
         private static PlayerControllerData EnsurePlayerControllerDataAsset()

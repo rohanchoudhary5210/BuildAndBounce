@@ -3,7 +3,8 @@
     "rootNamespace": "BuildAndBounce.Editor",
     "references": [
         "Project.Runtime",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [
         "Editor"

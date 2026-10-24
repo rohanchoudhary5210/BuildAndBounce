@@ -42,6 +42,7 @@ namespace BuildAndBounce.Player
 
         public Vector2 MoveInput => _moveInput;
         public Vector2 LookInput => _lookInput;
+        public bool IsPointerLookControl => _lookAction?.activeControl?.device is Pointer;
         public bool JumpTriggered => _jumpTriggered;
         public bool IsJumpHeld => _isJumpHeld;
         public bool DashTriggered => _dashTriggered;
