@@ -74,15 +74,24 @@ namespace BuildAndBounce.Player
         /// </summary>
         public void Respawn()
         {
-            // CharacterController must be disabled briefly during transform teleportation in Unity
+            RespawnAt(_respawnPosition, _respawnRotation);
+        }
+
+        /// <summary>
+        /// Teleports the character to an explicit position and zeroes out accumulated velocity.
+        /// </summary>
+        public void RespawnAt(Vector3 position, Quaternion rotation)
+        {
             _characterController.enabled = false;
-            transform.position = _respawnPosition;
-            transform.rotation = _respawnRotation;
+            transform.position = position;
+            transform.rotation = rotation;
             _characterController.enabled = true;
 
             _playerController.ResetVelocity();
             OnRespawned?.Invoke();
         }
+
+        public void RespawnAt(Vector3 position) => RespawnAt(position, Quaternion.identity);
 
         /// <summary>
         /// Explicitly overrides the respawn position (e.g. from editor tools).

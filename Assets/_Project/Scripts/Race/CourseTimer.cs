@@ -11,8 +11,8 @@ namespace BuildAndBounce.Race
     public class CourseTimer : MonoBehaviour
     {
         [Header("Debug Display")]
-        [Tooltip("Shows an in-game timer readout in the top-left during play mode.")]
-        [SerializeField] private bool _showDebugUI = true;
+        [Tooltip("Shows a legacy IMGUI timer in the top-left during play mode if no uGUI HUD is present.")]
+        [SerializeField] private bool _showDebugUI = false;
 
         private float _elapsedTime;
         private bool _isRunning;
@@ -77,13 +77,19 @@ namespace BuildAndBounce.Race
         /// <summary>
         /// Formats elapsed time into MM:SS.fff (e.g. "01:23.456").
         /// </summary>
-        public string GetFormattedTime()
-        {
-            int minutes = (int)(_elapsedTime / 60f);
-            int seconds = (int)(_elapsedTime % 60f);
-            int fraction = (int)((_elapsedTime * 1000f) % 1000f);
+        public string GetFormattedTime() => FormatTime(_elapsedTime);
 
-            return $"{minutes:D2}:{seconds:D2}.{fraction:D3}";
+        /// <summary>
+        /// Formats seconds into MM:SS.fff (e.g. "01:23.456").
+        /// </summary>
+        public static string FormatTime(float seconds)
+        {
+            if (seconds <= 0f) return "--:--.---";
+            int minutes = (int)(seconds / 60f);
+            int sec = (int)(seconds % 60f);
+            int fraction = (int)((seconds * 1000f) % 1000f);
+
+            return $"{minutes:D2}:{sec:D2}.{fraction:D3}";
         }
 
         public void ResetTimer()

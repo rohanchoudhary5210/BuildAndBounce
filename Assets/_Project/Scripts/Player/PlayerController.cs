@@ -45,6 +45,7 @@ namespace BuildAndBounce.Player
         public float VerticalVelocity => _verticalVelocity;
         public bool IsGrounded => _isGrounded;
         public bool IsDashing => _isDashing;
+        public float LastImpactSpeed { get; private set; }
 
         public event Action OnJumped;
         public event Action OnLanded;
@@ -139,6 +140,7 @@ namespace BuildAndBounce.Player
 
                 if (!wasGrounded)
                 {
+                    LastImpactSpeed = Mathf.Abs(_verticalVelocity);
                     OnLanded?.Invoke();
                 }
 

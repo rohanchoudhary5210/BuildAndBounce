@@ -1,6 +1,7 @@
 using BuildAndBounce.Level;
 using BuildAndBounce.Player;
 using BuildAndBounce.Race;
+using BuildAndBounce.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -100,7 +101,7 @@ namespace BuildAndBounce.Editor
                 }
             }
 
-            // 8. Ensure CourseTimer exists
+            // 8. Ensure CourseTimer and UI systems exist
             if (UnityEngine.Object.FindAnyObjectByType<CourseTimer>() == null)
             {
                 GameObject timerObj = new GameObject("CourseManager");
@@ -108,7 +109,24 @@ namespace BuildAndBounce.Editor
                 timerObj.AddComponent<CourseTimer>();
             }
 
-            // 9. Automatically setup Cinemachine camera tracking the player
+            if (UnityEngine.Object.FindAnyObjectByType<GameHUD>() == null)
+            {
+                GameObject hudObj = new GameObject("HUD");
+                hudObj.transform.SetParent(courseRoot.transform, false);
+                hudObj.AddComponent<GameHUD>();
+            }
+
+            if (UnityEngine.Object.FindAnyObjectByType<PauseMenu>() == null)
+            {
+                GameObject pauseObj = new GameObject("PauseManager");
+                pauseObj.transform.SetParent(courseRoot.transform, false);
+                pauseObj.AddComponent<PauseMenu>();
+            }
+
+            // 9. Wire Player game-feel components (Visuals, Audio, Squash & Stretch)
+            PlayerSetupTool.WirePlayerReferences();
+
+            // 10. Automatically setup Cinemachine camera tracking the player
             PlayerSetupTool.SetupThirdPersonCamera();
 
             EditorUtility.SetDirty(courseRoot);

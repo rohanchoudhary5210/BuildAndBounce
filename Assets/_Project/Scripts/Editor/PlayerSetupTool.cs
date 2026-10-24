@@ -99,7 +99,52 @@ namespace BuildAndBounce.Editor
             }
             soReader.ApplyModifiedProperties();
 
-            // 5. Configure PlayerController Data & Camera
+            // 5. Separate visual mesh into a child transform for safe squash and stretch
+            Transform visualChild = player.transform.Find("Visual");
+            if (visualChild == null)
+            {
+                var visualObj = new GameObject("Visual");
+                Undo.RegisterCreatedObjectUndo(visualObj, "Create Player Visual Child");
+                visualObj.transform.SetParent(player.transform, false);
+                visualObj.transform.localPosition = Vector3.zero;
+                visualObj.transform.localRotation = Quaternion.identity;
+                visualObj.transform.localScale = Vector3.one;
+                visualChild = visualObj.transform;
+
+                // Move existing MeshFilter and MeshRenderer from root to Visual child
+                if (player.TryGetComponent<MeshFilter>(out var rootFilter))
+                {
+                    var childFilter = visualObj.AddComponent<MeshFilter>();
+                    childFilter.sharedMesh = rootFilter.sharedMesh;
+                    Undo.DestroyObjectImmediate(rootFilter);
+                }
+                if (player.TryGetComponent<MeshRenderer>(out var rootRenderer))
+                {
+                    var childRenderer = visualObj.AddComponent<MeshRenderer>();
+                    childRenderer.sharedMaterials = rootRenderer.sharedMaterials;
+                    Undo.DestroyObjectImmediate(rootRenderer);
+                }
+            }
+
+            // 6. Configure Game Feel Components (Visuals, Audio, Impulse Shake)
+            if (!player.TryGetComponent<PlayerVisuals>(out var visuals))
+            {
+                visuals = Undo.AddComponent<PlayerVisuals>(player);
+            }
+
+            if (!player.TryGetComponent<PlayerAudio>(out var audio))
+            {
+                audio = Undo.AddComponent<PlayerAudio>(player);
+            }
+
+            if (!player.TryGetComponent<CinemachineImpulseSource>(out var impulse))
+            {
+                impulse = Undo.AddComponent<CinemachineImpulseSource>(player);
+            }
+            impulse.ImpulseDefinition.ImpulseDuration = 0.2f;
+            impulse.ImpulseDefinition.DissipationDistance = 50f;
+
+            // 7. Configure PlayerController Data & Camera
             var dataAsset = EnsurePlayerControllerDataAsset();
 
             var soController = new SerializedObject(controller);
@@ -346,7 +391,14 @@ namespace BuildAndBounce.Editor
             }
             EditorUtility.SetDirty(axisController);
 
-            // 7. Ensure PlayerController references Main Camera
+            // 7. Ensure CinemachineImpulseListener on Virtual Camera for camera shake
+            if (!vcam.TryGetComponent<CinemachineImpulseListener>(out var listener))
+            {
+                listener = Undo.AddComponent<CinemachineImpulseListener>(vcam.gameObject);
+            }
+            EditorUtility.SetDirty(listener);
+
+            // 8. Ensure PlayerController references Main Camera
             Undo.RecordObject(controller, "Set Camera Transform");
             var soController = new SerializedObject(controller);
             var propCam = soController.FindProperty("_cameraTransform");
