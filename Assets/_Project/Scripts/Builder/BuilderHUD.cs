@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -8,10 +9,12 @@ namespace BuildAndBounce.Builder
 {
     /// <summary>
     /// In-game UI for M3 Level Builder:
-    /// - Palette selector for blocks
-    /// - One-click mode toggle (Play / Build)
-    /// - Undo, Redo, Clear, Save, and Load buttons
-    /// - Share code popup and validation alerts
+    /// - Top toolbar with clean HorizontalLayoutGroup for actions (Undo, Redo, Clear, Save, Load, Share)
+    /// - Center badge with live placed block counter
+    /// - Test Play toggle button in header
+    /// - Controls guide banner floating above palette
+    /// - Palette selector with high-contrast cards, color stripes, and hotkey labels
+    /// - Toast notification overlay
     /// </summary>
     public class BuilderHUD : MonoBehaviour
     {
@@ -25,11 +28,19 @@ namespace BuildAndBounce.Builder
         [SerializeField] private Button _saveButton;
         [SerializeField] private Button _loadButton;
         [SerializeField] private Button _clearButton;
+        [SerializeField] private Button _shareButton;
+        [SerializeField] private TextMeshProUGUI _blockCountText;
+        [SerializeField] private GameObject _toastRoot;
         [SerializeField] private TextMeshProUGUI _statusToastText;
         [SerializeField] private Transform _paletteContainer;
 
         private readonly List<Button> _paletteButtons = new List<Button>();
+        private readonly List<Image> _paletteCardBgs = new List<Image>();
         private Coroutine _toastRoutine;
+
+        private static readonly Color CardBgDefault = new Color(0.11f, 0.14f, 0.20f, 0.98f);
+        private static readonly Color CardBgSelected = new Color(0.18f, 0.23f, 0.34f, 1f);
+        private static readonly Color AccentCyan = new Color(0.0f, 0.9f, 1.0f, 1f);
 
         private void Awake()
         {
@@ -37,6 +48,11 @@ namespace BuildAndBounce.Builder
 
             if (_hudRoot == null)
             {
+                var existingCanvas = transform.Find("BuilderHUD_Canvas");
+                if (existingCanvas != null)
+                {
+                    DestroyImmediate(existingCanvas.gameObject);
+                }
                 BuildHUDHierarchy();
             }
         }
@@ -45,6 +61,7 @@ namespace BuildAndBounce.Builder
         {
             LevelBuilder.OnModeChanged += HandleModeChanged;
             LevelBuilder.OnSelectedBlockChanged += HandleSelectedBlockChanged;
+            LevelBuilder.OnBlockCountChanged += HandleBlockCountChanged;
             if (_builder != null && _builder.History != null)
             {
                 _builder.History.OnHistoryChanged += UpdateHistoryButtons;
@@ -55,6 +72,7 @@ namespace BuildAndBounce.Builder
         {
             LevelBuilder.OnModeChanged -= HandleModeChanged;
             LevelBuilder.OnSelectedBlockChanged -= HandleSelectedBlockChanged;
+            LevelBuilder.OnBlockCountChanged -= HandleBlockCountChanged;
             if (_builder != null && _builder.History != null)
             {
                 _builder.History.OnHistoryChanged -= UpdateHistoryButtons;
@@ -65,6 +83,8 @@ namespace BuildAndBounce.Builder
         {
             PopulatePalette();
             UpdateHistoryButtons();
+            int count = _builder != null && _builder.PlacedBlocks != null ? _builder.PlacedBlocks.Count : 0;
+            HandleBlockCountChanged(count);
         }
 
         private void HandleModeChanged(BuilderMode mode)
@@ -83,6 +103,14 @@ namespace BuildAndBounce.Builder
         private void HandleSelectedBlockChanged(BlockData data)
         {
             UpdatePaletteSelection();
+        }
+
+        private void HandleBlockCountChanged(int count)
+        {
+            if (_blockCountText != null)
+            {
+                _blockCountText.text = $"<b>BUILD MODE</b>  •  <color=#00E5FF>{count}</color> Blocks";
+            }
         }
 
         public void ToggleMode()
@@ -147,9 +175,22 @@ namespace BuildAndBounce.Builder
             }
         }
 
+        public void OpenShareDialog()
+        {
+            var shareHud = UnityEngine.Object.FindAnyObjectByType<BuildAndBounce.UI.OnlineShareHUD>(FindObjectsInactive.Include);
+            if (shareHud != null)
+            {
+                shareHud.ToggleDialog();
+            }
+            else
+            {
+                SaveCourse();
+            }
+        }
+
         public void ShowToast(string message)
         {
-            if (_statusToastText == null) return;
+            if (_statusToastText == null || _toastRoot == null) return;
 
             if (_toastRoutine != null) StopCoroutine(_toastRoutine);
             _toastRoutine = StartCoroutine(ToastRoutine(message));
@@ -158,9 +199,9 @@ namespace BuildAndBounce.Builder
         private IEnumerator ToastRoutine(string message)
         {
             _statusToastText.text = message;
-            _statusToastText.gameObject.SetActive(true);
+            _toastRoot.SetActive(true);
             yield return new WaitForSecondsRealtime(3.5f);
-            _statusToastText.gameObject.SetActive(false);
+            _toastRoot.SetActive(false);
         }
 
         private void UpdateHistoryButtons()
@@ -175,12 +216,12 @@ namespace BuildAndBounce.Builder
         {
             if (_builder == null || _builder.Catalog == null || _paletteContainer == null) return;
 
-            // Clear previous buttons
             for (int i = 0; i < _paletteButtons.Count; i++)
             {
                 if (_paletteButtons[i] != null) Destroy(_paletteButtons[i].gameObject);
             }
             _paletteButtons.Clear();
+            _paletteCardBgs.Clear();
 
             var catalog = _builder.Catalog;
             for (int i = 0; i < catalog.Count; i++)
@@ -188,25 +229,60 @@ namespace BuildAndBounce.Builder
                 int index = i;
                 var block = catalog.GetBlock(i);
 
+                // Card container button
                 var btnObj = new GameObject($"Btn_{block.Id}");
                 btnObj.transform.SetParent(_paletteContainer, false);
 
                 var rect = btnObj.AddComponent<RectTransform>();
-                rect.sizeDelta = new Vector2(100f, 60f);
+                rect.sizeDelta = new Vector2(110f, 62f);
 
-                var img = btnObj.AddComponent<Image>();
-                img.color = block.ThemeColor;
+                var cardBg = btnObj.AddComponent<Image>();
+                cardBg.color = CardBgDefault;
+                _paletteCardBgs.Add(cardBg);
 
                 var btn = btnObj.AddComponent<Button>();
                 btn.onClick.AddListener(() => _builder.SelectBlock(index));
 
+                // Top Accent Stripe
+                var stripeObj = new GameObject("Stripe");
+                stripeObj.transform.SetParent(btnObj.transform, false);
+                var sRect = stripeObj.AddComponent<RectTransform>();
+                sRect.anchorMin = new Vector2(0f, 1f);
+                sRect.anchorMax = new Vector2(1f, 1f);
+                sRect.pivot = new Vector2(0.5f, 1f);
+                sRect.anchoredPosition = Vector2.zero;
+                sRect.sizeDelta = new Vector2(0f, 5f);
+                var sImg = stripeObj.AddComponent<Image>();
+                sImg.color = block.ThemeColor;
+
+                // Hotkey badge [1]..[7]
+                if (i < 9)
+                {
+                    var badgeObj = new GameObject("HotkeyBadge");
+                    badgeObj.transform.SetParent(btnObj.transform, false);
+                    var bRect = badgeObj.AddComponent<RectTransform>();
+                    bRect.anchorMin = new Vector2(1f, 1f);
+                    bRect.anchorMax = new Vector2(1f, 1f);
+                    bRect.pivot = new Vector2(1f, 1f);
+                    bRect.anchoredPosition = new Vector2(-4f, -7f);
+                    bRect.sizeDelta = new Vector2(18f, 14f);
+
+                    var bTmp = badgeObj.AddComponent<TextMeshProUGUI>();
+                    bTmp.text = $"{i + 1}";
+                    bTmp.fontSize = 10;
+                    bTmp.fontStyle = FontStyles.Bold;
+                    bTmp.alignment = TextAlignmentOptions.Center;
+                    bTmp.color = new Color(0.55f, 0.65f, 0.8f, 1f);
+                }
+
+                // Block Label
                 var labelObj = new GameObject("Label");
                 labelObj.transform.SetParent(btnObj.transform, false);
                 var lRect = labelObj.AddComponent<RectTransform>();
                 lRect.anchorMin = Vector2.zero;
                 lRect.anchorMax = Vector2.one;
-                lRect.offsetMin = new Vector2(4f, 4f);
-                lRect.offsetMax = new Vector2(-4f, -4f);
+                lRect.offsetMin = new Vector2(6f, 4f);
+                lRect.offsetMax = new Vector2(-6f, -12f);
 
                 var tmp = labelObj.AddComponent<TextMeshProUGUI>();
                 tmp.text = block.DisplayName;
@@ -214,6 +290,7 @@ namespace BuildAndBounce.Builder
                 tmp.fontStyle = FontStyles.Bold;
                 tmp.alignment = TextAlignmentOptions.Center;
                 tmp.color = Color.white;
+                tmp.textWrappingMode = TextWrappingModes.Normal;
 
                 _paletteButtons.Add(btn);
             }
@@ -230,15 +307,25 @@ namespace BuildAndBounce.Builder
             {
                 if (_paletteButtons[i] == null) continue;
                 var outline = _paletteButtons[i].GetComponent<Outline>();
-                if (i == sel)
+                bool isSelected = (i == sel);
+
+                if (isSelected)
                 {
                     if (outline == null) outline = _paletteButtons[i].gameObject.AddComponent<Outline>();
-                    outline.effectColor = Color.white;
-                    outline.effectDistance = new Vector2(3f, 3f);
+                    outline.effectColor = AccentCyan;
+                    outline.effectDistance = new Vector2(2.5f, 2.5f);
+                    if (i < _paletteCardBgs.Count && _paletteCardBgs[i] != null)
+                    {
+                        _paletteCardBgs[i].color = CardBgSelected;
+                    }
                 }
-                else if (outline != null)
+                else
                 {
-                    Destroy(outline);
+                    if (outline != null) Destroy(outline);
+                    if (i < _paletteCardBgs.Count && _paletteCardBgs[i] != null)
+                    {
+                        _paletteCardBgs[i].color = CardBgDefault;
+                    }
                 }
             }
         }
@@ -259,7 +346,7 @@ namespace BuildAndBounce.Builder
             canvasObj.AddComponent<GraphicRaycaster>();
             _hudRoot = canvasObj;
 
-            // Top Toolbar Bar
+            // 1. Top Bar
             var topBar = new GameObject("TopBar");
             topBar.transform.SetParent(canvasObj.transform, false);
             var tbRect = topBar.AddComponent<RectTransform>();
@@ -270,73 +357,159 @@ namespace BuildAndBounce.Builder
             tbRect.sizeDelta = new Vector2(0f, 60f);
 
             var tbBg = topBar.AddComponent<Image>();
-            tbBg.color = new Color(0.08f, 0.1f, 0.16f, 0.9f);
+            tbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.95f);
 
-            // Left actions: Undo, Redo, Clear, Save, Load
-            _undoButton = CreateToolButton(topBar.transform, new Vector2(60f, -30f), "Undo", UndoAction);
-            _redoButton = CreateToolButton(topBar.transform, new Vector2(140f, -30f), "Redo", RedoAction);
-            _clearButton = CreateToolButton(topBar.transform, new Vector2(230f, -30f), "Clear", ClearCourse);
-            _saveButton = CreateToolButton(topBar.transform, new Vector2(320f, -30f), "Save", SaveCourse);
-            _loadButton = CreateToolButton(topBar.transform, new Vector2(400f, -30f), "Load", LoadLatestCourse);
+            // Left actions layout container
+            var leftGroup = new GameObject("LeftActionsGroup");
+            leftGroup.transform.SetParent(topBar.transform, false);
+            var lgRect = leftGroup.AddComponent<RectTransform>();
+            lgRect.anchorMin = new Vector2(0f, 0.5f);
+            lgRect.anchorMax = new Vector2(0f, 0.5f);
+            lgRect.pivot = new Vector2(0f, 0.5f);
+            lgRect.anchoredPosition = new Vector2(16f, 0f);
+            lgRect.sizeDelta = new Vector2(600f, 44f);
+
+            var hLayout = leftGroup.AddComponent<HorizontalLayoutGroup>();
+            hLayout.spacing = 8f;
+            hLayout.childAlignment = TextAnchor.MiddleLeft;
+            hLayout.childControlWidth = false;
+            hLayout.childControlHeight = false;
+
+            _undoButton = CreateToolButton(leftGroup.transform, "Undo", UndoAction, 78f);
+            _redoButton = CreateToolButton(leftGroup.transform, "Redo", RedoAction, 78f);
+            _clearButton = CreateToolButton(leftGroup.transform, "Clear", ClearCourse, 72f);
+            _saveButton = CreateToolButton(leftGroup.transform, "Save", SaveCourse, 72f);
+            _loadButton = CreateToolButton(leftGroup.transform, "Load", LoadLatestCourse, 72f);
+            _shareButton = CreateToolButton(leftGroup.transform, "Share [O]", OpenShareDialog, 92f, AccentCyan);
+
+            // Center: Block Count Badge
+            var centerBadge = new GameObject("CenterBadge");
+            centerBadge.transform.SetParent(topBar.transform, false);
+            var cbRect = centerBadge.AddComponent<RectTransform>();
+            cbRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cbRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cbRect.pivot = new Vector2(0.5f, 0.5f);
+            cbRect.anchoredPosition = Vector2.zero;
+            cbRect.sizeDelta = new Vector2(250f, 36f);
+
+            var cbBg = centerBadge.AddComponent<Image>();
+            cbBg.color = new Color(0.12f, 0.16f, 0.24f, 0.9f);
+
+            var cbTextObj = new GameObject("Text");
+            cbTextObj.transform.SetParent(centerBadge.transform, false);
+            var cbTRect = cbTextObj.AddComponent<RectTransform>();
+            cbTRect.anchorMin = Vector2.zero;
+            cbTRect.anchorMax = Vector2.one;
+
+            _blockCountText = cbTextObj.AddComponent<TextMeshProUGUI>();
+            _blockCountText.text = "<b>BUILD MODE</b>  •  <color=#00E5FF>0</color> Blocks";
+            _blockCountText.fontSize = 14;
+            _blockCountText.alignment = TextAlignmentOptions.Center;
+            _blockCountText.color = Color.white;
 
             // Right action: Mode toggle (Play / Edit)
-            _modeToggleButton = CreateToolButton(topBar.transform, new Vector2(-120f, -30f), "PLAY [Tab]", ToggleMode);
-            var mtRect = _modeToggleButton.GetComponent<RectTransform>();
-            mtRect.anchorMin = new Vector2(1f, 1f);
-            mtRect.anchorMax = new Vector2(1f, 1f);
-            mtRect.sizeDelta = new Vector2(160f, 42f);
-            _modeToggleButton.GetComponent<Image>().color = new Color(0.2f, 0.75f, 0.35f, 1f);
+            var rightGroup = new GameObject("RightActionsGroup");
+            rightGroup.transform.SetParent(topBar.transform, false);
+            var rgRect = rightGroup.AddComponent<RectTransform>();
+            rgRect.anchorMin = new Vector2(1f, 0.5f);
+            rgRect.anchorMax = new Vector2(1f, 0.5f);
+            rgRect.pivot = new Vector2(1f, 0.5f);
+            rgRect.anchoredPosition = new Vector2(-16f, 0f);
+            rgRect.sizeDelta = new Vector2(170f, 42f);
+
+            _modeToggleButton = CreateToolButton(rightGroup.transform, "TEST PLAY [Tab]", ToggleMode, 170f, Color.white, new Color(0.08f, 0.68f, 0.36f, 1f));
             _modeToggleText = _modeToggleButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (_modeToggleText != null) _modeToggleText.fontSize = 14;
 
-            // Status Toast (Center Top)
-            var toastObj = new GameObject("Toast");
-            toastObj.transform.SetParent(canvasObj.transform, false);
-            var tRect = toastObj.AddComponent<RectTransform>();
-            tRect.anchorMin = new Vector2(0.5f, 0.9f);
-            tRect.anchorMax = new Vector2(0.5f, 0.9f);
-            tRect.pivot = new Vector2(0.5f, 0.5f);
-            tRect.sizeDelta = new Vector2(600f, 50f);
+            // 2. Status Toast (Center Top, below toolbar)
+            _toastRoot = new GameObject("Toast");
+            _toastRoot.transform.SetParent(canvasObj.transform, false);
+            var tRect = _toastRoot.AddComponent<RectTransform>();
+            tRect.anchorMin = new Vector2(0.5f, 1f);
+            tRect.anchorMax = new Vector2(0.5f, 1f);
+            tRect.pivot = new Vector2(0.5f, 1f);
+            tRect.anchoredPosition = new Vector2(0f, -74f);
+            tRect.sizeDelta = new Vector2(650f, 46f);
 
-            _statusToastText = toastObj.AddComponent<TextMeshProUGUI>();
+            var toastBg = _toastRoot.AddComponent<Image>();
+            toastBg.color = new Color(0.07f, 0.1f, 0.16f, 0.95f);
+
+            var toastTextObj = new GameObject("ToastText");
+            toastTextObj.transform.SetParent(_toastRoot.transform, false);
+            var ttRect = toastTextObj.AddComponent<RectTransform>();
+            ttRect.anchorMin = Vector2.zero;
+            ttRect.anchorMax = Vector2.one;
+            ttRect.offsetMin = new Vector2(16f, 4f);
+            ttRect.offsetMax = new Vector2(-16f, -4f);
+
+            _statusToastText = toastTextObj.AddComponent<TextMeshProUGUI>();
             _statusToastText.alignment = TextAlignmentOptions.Center;
-            _statusToastText.fontSize = 22;
+            _statusToastText.fontSize = 18;
             _statusToastText.color = Color.white;
-            toastObj.SetActive(false);
+            _toastRoot.SetActive(false);
 
-            // Bottom Palette Bar
+            // 3. Controls Hint Banner (Floating above bottom palette)
+            var hintBar = new GameObject("ControlsHintBar");
+            hintBar.transform.SetParent(canvasObj.transform, false);
+            var hbRect = hintBar.AddComponent<RectTransform>();
+            hbRect.anchorMin = new Vector2(0.5f, 0f);
+            hbRect.anchorMax = new Vector2(0.5f, 0f);
+            hbRect.pivot = new Vector2(0.5f, 0f);
+            hbRect.anchoredPosition = new Vector2(0f, 90f);
+            hbRect.sizeDelta = new Vector2(880f, 28f);
+
+            var hbBg = hintBar.AddComponent<Image>();
+            hbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.82f);
+
+            var hbTextObj = new GameObject("HintText");
+            hbTextObj.transform.SetParent(hintBar.transform, false);
+            var hbtRect = hbTextObj.AddComponent<RectTransform>();
+            hbtRect.anchorMin = Vector2.zero;
+            hbtRect.anchorMax = Vector2.one;
+
+            var hbTmp = hbTextObj.AddComponent<TextMeshProUGUI>();
+            hbTmp.text = "<color=#00E5FF>LMB</color> Place   <color=#00E5FF>RMB</color> Orbit   <color=#00E5FF>WASD</color> Pan   <color=#00E5FF>Q/E</color> Height   <color=#00E5FF>R</color> Rotate   <color=#00E5FF>X</color> Delete   <color=#00E5FF>1-7</color> Palette   <color=#10B981>Tab</color> Play";
+            hbTmp.fontSize = 12;
+            hbTmp.fontStyle = FontStyles.Bold;
+            hbTmp.alignment = TextAlignmentOptions.Center;
+            hbTmp.color = new Color(0.85f, 0.88f, 0.95f, 1f);
+
+            // 4. Bottom Palette Bar
             var bottomBar = new GameObject("PaletteBar");
             bottomBar.transform.SetParent(canvasObj.transform, false);
             var bbRect = bottomBar.AddComponent<RectTransform>();
             bbRect.anchorMin = new Vector2(0.5f, 0f);
             bbRect.anchorMax = new Vector2(0.5f, 0f);
             bbRect.pivot = new Vector2(0.5f, 0f);
-            bbRect.anchoredPosition = new Vector2(0f, 20f);
-            bbRect.sizeDelta = new Vector2(800f, 80f);
+            bbRect.anchoredPosition = new Vector2(0f, 12f);
+            bbRect.sizeDelta = new Vector2(880f, 76f);
 
             var bbBg = bottomBar.AddComponent<Image>();
-            bbBg.color = new Color(0.08f, 0.1f, 0.16f, 0.9f);
+            bbBg.color = new Color(0.06f, 0.08f, 0.12f, 0.95f);
 
             var layout = bottomBar.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 10f;
-            layout.padding = new RectOffset(12, 12, 10, 10);
+            layout.padding = new RectOffset(10, 10, 7, 7);
             layout.childAlignment = TextAnchor.MiddleCenter;
 
             _paletteContainer = bottomBar.transform;
         }
 
-        private Button CreateToolButton(Transform parent, Vector2 pos, string label, UnityEngine.Events.UnityAction action)
+        private Button CreateToolButton(
+            Transform parent,
+            string label,
+            UnityEngine.Events.UnityAction action,
+            float width = 76f,
+            Color? textColor = null,
+            Color? bgColor = null)
         {
             var btnObj = new GameObject($"Btn_{label}");
             btnObj.transform.SetParent(parent, false);
             var rect = btnObj.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = pos;
-            rect.sizeDelta = new Vector2(70f, 36f);
+            rect.sizeDelta = new Vector2(width, 36f);
 
             var img = btnObj.AddComponent<Image>();
-            img.color = new Color(0.18f, 0.22f, 0.3f, 1f);
+            img.color = bgColor ?? new Color(0.14f, 0.18f, 0.26f, 1f);
 
             var btn = btnObj.AddComponent<Button>();
             btn.onClick.AddListener(action);
@@ -349,10 +522,10 @@ namespace BuildAndBounce.Builder
 
             var tmp = textObj.AddComponent<TextMeshProUGUI>();
             tmp.text = label;
-            tmp.fontSize = 14;
+            tmp.fontSize = 13;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = Color.white;
+            tmp.color = textColor ?? new Color(0.92f, 0.94f, 0.98f, 1f);
 
             return btn;
         }

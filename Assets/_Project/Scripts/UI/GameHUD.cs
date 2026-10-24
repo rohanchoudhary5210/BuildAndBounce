@@ -1,4 +1,5 @@
 using System.Collections;
+using BuildAndBounce.Builder;
 using BuildAndBounce.Level;
 using BuildAndBounce.Race;
 using TMPro;
@@ -49,6 +50,12 @@ namespace BuildAndBounce.UI
         private void Start()
         {
             _timer = UnityEngine.Object.FindAnyObjectByType<CourseTimer>();
+
+            var builder = UnityEngine.Object.FindAnyObjectByType<LevelBuilder>();
+            if (builder != null)
+            {
+                HandleModeChanged(builder.CurrentMode);
+            }
         }
 
         private void OnEnable()
@@ -56,6 +63,7 @@ namespace BuildAndBounce.UI
             CourseTimer.OnTimerStarted += HandleTimerStarted;
             CourseTimer.OnTimerFinished += HandleTimerFinished;
             Checkpoint.OnCheckpointActivated += HandleCheckpointReached;
+            LevelBuilder.OnModeChanged += HandleModeChanged;
         }
 
         private void OnDisable()
@@ -63,6 +71,15 @@ namespace BuildAndBounce.UI
             CourseTimer.OnTimerStarted -= HandleTimerStarted;
             CourseTimer.OnTimerFinished -= HandleTimerFinished;
             Checkpoint.OnCheckpointActivated -= HandleCheckpointReached;
+            LevelBuilder.OnModeChanged -= HandleModeChanged;
+        }
+
+        private void HandleModeChanged(BuilderMode mode)
+        {
+            if (_canvas != null)
+            {
+                _canvas.gameObject.SetActive(mode == BuilderMode.Play);
+            }
         }
 
         private void Update()
@@ -195,38 +212,59 @@ namespace BuildAndBounce.UI
 
             canvasObj.AddComponent<GraphicRaycaster>();
 
-            // Live Timer (Top Center)
+            // Live Timer (Top Center) with sleek pill backing
+            var timerContainer = new GameObject("TimerContainer");
+            timerContainer.transform.SetParent(canvasObj.transform, false);
+            var tcRect = timerContainer.AddComponent<RectTransform>();
+            tcRect.anchorMin = new Vector2(0.5f, 1f);
+            tcRect.anchorMax = new Vector2(0.5f, 1f);
+            tcRect.pivot = new Vector2(0.5f, 1f);
+            tcRect.anchoredPosition = new Vector2(0f, -16f);
+            tcRect.sizeDelta = new Vector2(240f, 50f);
+
+            var tcImg = timerContainer.AddComponent<Image>();
+            tcImg.color = new Color(0.06f, 0.08f, 0.12f, 0.85f);
+
             var timerObj = new GameObject("TimerText");
-            timerObj.transform.SetParent(canvasObj.transform, false);
+            timerObj.transform.SetParent(timerContainer.transform, false);
             var timerRect = timerObj.AddComponent<RectTransform>();
-            timerRect.anchorMin = new Vector2(0.5f, 1f);
-            timerRect.anchorMax = new Vector2(0.5f, 1f);
-            timerRect.pivot = new Vector2(0.5f, 1f);
-            timerRect.anchoredPosition = new Vector2(0f, -24f);
-            timerRect.sizeDelta = new Vector2(360f, 60f);
+            timerRect.anchorMin = Vector2.zero;
+            timerRect.anchorMax = Vector2.one;
+            timerRect.sizeDelta = Vector2.zero;
 
             _timerText = timerObj.AddComponent<TextMeshProUGUI>();
             _timerText.text = "00:00.000";
-            _timerText.fontSize = 42;
+            _timerText.fontSize = 32;
             _timerText.alignment = TextAlignmentOptions.Center;
             _timerText.fontStyle = FontStyles.Bold;
             _timerText.color = Color.white;
 
-            // Personal Best (Top Right)
+            // Personal Best (Top Right) with sleek pill backing
+            var pbContainer = new GameObject("PBContainer");
+            pbContainer.transform.SetParent(canvasObj.transform, false);
+            var pbCRect = pbContainer.AddComponent<RectTransform>();
+            pbCRect.anchorMin = new Vector2(1f, 1f);
+            pbCRect.anchorMax = new Vector2(1f, 1f);
+            pbCRect.pivot = new Vector2(1f, 1f);
+            pbCRect.anchoredPosition = new Vector2(-24f, -16f);
+            pbCRect.sizeDelta = new Vector2(200f, 44f);
+
+            var pbCImg = pbContainer.AddComponent<Image>();
+            pbCImg.color = new Color(0.06f, 0.08f, 0.12f, 0.85f);
+
             var pbObj = new GameObject("PBText");
-            pbObj.transform.SetParent(canvasObj.transform, false);
+            pbObj.transform.SetParent(pbContainer.transform, false);
             var pbRect = pbObj.AddComponent<RectTransform>();
-            pbRect.anchorMin = new Vector2(1f, 1f);
-            pbRect.anchorMax = new Vector2(1f, 1f);
-            pbRect.pivot = new Vector2(1f, 1f);
-            pbRect.anchoredPosition = new Vector2(-32f, -28f);
-            pbRect.sizeDelta = new Vector2(280f, 40f);
+            pbRect.anchorMin = Vector2.zero;
+            pbRect.anchorMax = Vector2.one;
+            pbRect.sizeDelta = Vector2.zero;
 
             _bestTimeText = pbObj.AddComponent<TextMeshProUGUI>();
             _bestTimeText.text = "PB: --:--.---";
-            _bestTimeText.fontSize = 24;
-            _bestTimeText.alignment = TextAlignmentOptions.Right;
-            _bestTimeText.color = new Color(0.85f, 0.85f, 0.9f, 0.9f);
+            _bestTimeText.fontSize = 17;
+            _bestTimeText.fontStyle = FontStyles.Bold;
+            _bestTimeText.alignment = TextAlignmentOptions.Center;
+            _bestTimeText.color = new Color(1f, 0.85f, 0.2f, 1f);
 
             // Checkpoint Banner (Center-Top)
             _checkpointBanner = new GameObject("CheckpointBanner");

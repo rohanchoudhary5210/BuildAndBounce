@@ -62,6 +62,7 @@ namespace BuildAndBounce.Builder
 
         public static event Action<BuilderMode> OnModeChanged;
         public static event Action<BlockData> OnSelectedBlockChanged;
+        public static event Action<int> OnBlockCountChanged;
 
         private void Awake()
         {
@@ -198,6 +199,15 @@ namespace BuildAndBounce.Builder
             }
 
             if (Keyboard.current == null || Mouse.current == null) return;
+
+            // Quick palette hotkeys [1] - [7]
+            if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectBlock(0);
+            if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectBlock(1);
+            if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectBlock(2);
+            if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectBlock(3);
+            if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectBlock(4);
+            if (Keyboard.current.digit6Key.wasPressedThisFrame) SelectBlock(5);
+            if (Keyboard.current.digit7Key.wasPressedThisFrame) SelectBlock(6);
 
             // Rotate on R key
             if (Keyboard.current.rKey.wasPressedThisFrame)
@@ -389,6 +399,7 @@ namespace BuildAndBounce.Builder
             if (obj != null && data != null)
             {
                 _placedBlocks[obj] = data;
+                OnBlockCountChanged?.Invoke(_placedBlocks.Count);
             }
         }
 
@@ -397,6 +408,7 @@ namespace BuildAndBounce.Builder
             if (obj != null)
             {
                 _placedBlocks.Remove(obj);
+                OnBlockCountChanged?.Invoke(_placedBlocks.Count);
             }
         }
 
@@ -434,6 +446,7 @@ namespace BuildAndBounce.Builder
             }
 
             Debug.Log($"[LevelBuilder] Loaded course '{data.courseName}' with {data.blocks.Count} blocks (Code: {data.shareCode})");
+            OnBlockCountChanged?.Invoke(_placedBlocks.Count);
         }
 
         public void ClearCourse()
@@ -444,6 +457,7 @@ namespace BuildAndBounce.Builder
                 if (kvp.Key != null) Destroy(kvp.Key);
             }
             _placedBlocks.Clear();
+            OnBlockCountChanged?.Invoke(0);
         }
 
         private void EnsureCatalogLoaded()
