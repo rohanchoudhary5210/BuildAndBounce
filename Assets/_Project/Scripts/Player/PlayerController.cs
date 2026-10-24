@@ -227,6 +227,7 @@ namespace BuildAndBounce.Player
             // Ground or coyote jump
             if (_coyoteTimer > 0f)
             {
+                _remainingJumps = _data.MaxJumps;
                 ExecuteJump();
                 _coyoteTimer = 0f;
                 _jumpBufferTimer = 0f;
