@@ -8,6 +8,7 @@ namespace BuildAndBounce.Level
     /// Checkpoint trigger that records player progress through a course.
     /// Emits a C# event when first activated to notify the PlayerRespawn system.
     /// </summary>
+    [RequireComponent(typeof(Collider))]
     public class Checkpoint : MonoBehaviour
     {
         [Header("Configuration")]
@@ -26,14 +27,33 @@ namespace BuildAndBounce.Level
 
         private bool _isActivated;
         private Color _defaultColor;
+        private MaterialPropertyBlock _propBlock;
+
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
 
         public static event Action<Checkpoint> OnCheckpointActivated;
 
         private void Awake()
         {
+            var col = GetComponent<Collider>();
+            if (col != null)
+            {
+                col.isTrigger = true;
+            }
+
+            _propBlock = new MaterialPropertyBlock();
+
             if (_indicatorRenderer != null && _indicatorRenderer.sharedMaterial != null)
             {
-                _defaultColor = _indicatorRenderer.sharedMaterial.color;
+                if (_indicatorRenderer.sharedMaterial.HasProperty(BaseColorId))
+                {
+                    _defaultColor = _indicatorRenderer.sharedMaterial.GetColor(BaseColorId);
+                }
+                else if (_indicatorRenderer.sharedMaterial.HasProperty(ColorId))
+                {
+                    _defaultColor = _indicatorRenderer.sharedMaterial.GetColor(ColorId);
+                }
             }
         }
 
@@ -70,11 +90,7 @@ namespace BuildAndBounce.Level
             if (_isActivated) return;
 
             _isActivated = true;
-
-            if (_indicatorRenderer != null)
-            {
-                _indicatorRenderer.material.color = _activeColor;
-            }
+            SetIndicatorColor(_activeColor);
 
             OnCheckpointActivated?.Invoke(this);
         }
@@ -82,10 +98,22 @@ namespace BuildAndBounce.Level
         public void ResetCheckpoint()
         {
             _isActivated = false;
-            if (_indicatorRenderer != null)
+            SetIndicatorColor(_defaultColor);
+        }
+
+        private void SetIndicatorColor(Color color)
+        {
+            if (_indicatorRenderer == null) return;
+
+            if (_propBlock == null)
             {
-                _indicatorRenderer.material.color = _defaultColor;
+                _propBlock = new MaterialPropertyBlock();
             }
+
+            _indicatorRenderer.GetPropertyBlock(_propBlock);
+            _propBlock.SetColor(BaseColorId, color);
+            _propBlock.SetColor(ColorId, color);
+            _indicatorRenderer.SetPropertyBlock(_propBlock);
         }
 
         private void OnDrawGizmos()
