@@ -16,6 +16,10 @@ namespace BuildAndBounce.Player
         [Header("Level References")]
         [SerializeField] private CourseStart _courseStart;
 
+        [Header("Safety Net")]
+        [Tooltip("Respawn if the player falls below this height. UGC courses have no kill floor, so without this the player falls forever.")]
+        [SerializeField] private float _fallRespawnHeight = -25f;
+
         private CharacterController _characterController;
         private PlayerController _playerController;
 
@@ -74,6 +78,23 @@ namespace BuildAndBounce.Player
             CourseStart.OnCourseReset -= HandleCourseReset;
         }
 
+        private void Update()
+        {
+            if (transform.position.y < _fallRespawnHeight)
+            {
+                Respawn();
+            }
+        }
+
+        /// <summary>
+        /// Switches the course this player starts on (the level builder calls this for UGC courses).
+        /// </summary>
+        public void SetCourseStart(CourseStart courseStart)
+        {
+            _courseStart = courseStart;
+            HandleCourseReset();
+        }
+
         private void HandleCourseReset()
         {
             if (_courseStart != null)
@@ -108,10 +129,15 @@ namespace BuildAndBounce.Player
         /// <summary>
         /// Teleports the character to an explicit position and zeroes out accumulated velocity.
         /// </summary>
+        /// <param name="position">Feet position (spawn points mark the ground, not the capsule centre).</param>
         public void RespawnAt(Vector3 position, Quaternion rotation)
         {
+            // The pivot sits at the capsule centre, so lift it by half the capsule height;
+            // otherwise the player spawns half inside the pad and gets pushed out or falls through.
+            float pivotToFeet = _characterController.height * 0.5f - _characterController.center.y;
+
             _characterController.enabled = false;
-            transform.position = position;
+            transform.position = position + Vector3.up * (pivotToFeet + _characterController.skinWidth);
             transform.rotation = rotation;
             _characterController.enabled = true;
 

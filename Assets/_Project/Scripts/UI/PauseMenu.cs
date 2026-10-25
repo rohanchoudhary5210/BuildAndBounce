@@ -23,7 +23,6 @@ namespace BuildAndBounce.UI
         [SerializeField] private Button _quitButton;
 
         [Header("Course References")]
-        [SerializeField] private CourseStart _courseStart;
         [SerializeField] private PlayerRespawn _playerRespawn;
 
         private bool _isPaused;
@@ -33,14 +32,6 @@ namespace BuildAndBounce.UI
 
         private void Awake()
         {
-            if (_courseStart == null)
-            {
-                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Include);
-                if (_courseStart == null)
-                {
-                    Debug.LogError("[PauseMenu] CourseStart reference is missing! Wire it in Inspector or run Level Setup Tool.", this);
-                }
-            }
             if (_playerRespawn == null)
             {
                 _playerRespawn = FindAnyObjectByType<PlayerRespawn>(FindObjectsInactive.Include);
@@ -127,15 +118,10 @@ namespace BuildAndBounce.UI
             // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
             CourseStart.TriggerCourseReset();
 
-            if (_courseStart == null)
+            // PlayerRespawn knows the active start (scene course or UGC course) after the reset
+            if (_playerRespawn != null && _playerRespawn.gameObject.activeInHierarchy)
             {
-                _courseStart = FindAnyObjectByType<CourseStart>(FindObjectsInactive.Exclude);
-            }
-
-            // Teleport player back to start spawn position and rotation
-            if (_playerRespawn != null && _courseStart != null)
-            {
-                _playerRespawn.RespawnAt(_courseStart.SpawnPosition, _courseStart.SpawnRotation);
+                _playerRespawn.Respawn();
             }
         }
 

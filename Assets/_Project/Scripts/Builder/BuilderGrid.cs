@@ -3,8 +3,8 @@ using UnityEngine;
 namespace BuildAndBounce.Builder
 {
     /// <summary>
-    /// Snaps positions to an integer or fractional 3D world grid.
-    /// Handles surface-normal offsets so placed pieces stack cleanly without overlapping.
+    /// Snaps block placements to the X/Z build grid and stacks them flush on the surface under the cursor,
+    /// so placed pieces line up edge to edge without overlapping, sinking or floating.
     /// </summary>
     public class BuilderGrid : MonoBehaviour
     {
@@ -19,62 +19,64 @@ namespace BuildAndBounce.Builder
         public float BaseFloorY => _baseFloorY;
 
         /// <summary>
-        /// Snaps a raw position to the nearest grid coordinates.
+        /// Snaps a block centre on X/Z so the block's edges (not its centre) sit on grid lines.
+        /// Centre-snapping put odd-sized blocks (1x1, 3x3) half a cell off from even ones (4x4 start pad).
         /// </summary>
-        public Vector3 Snap(Vector3 rawPos)
+        public Vector3 SnapXZ(Vector3 center, Vector3 blockDimensions)
         {
-            float x = Mathf.Round(rawPos.x / _cellSize) * _cellSize;
-            float y = Mathf.Round(rawPos.y / _cellSize) * _cellSize;
-            float z = Mathf.Round(rawPos.z / _cellSize) * _cellSize;
-
-            return new Vector3(x, y, z);
+            return new Vector3(
+                SnapEdge(center.x, blockDimensions.x * 0.5f),
+                RoundHeight(center.y),
+                SnapEdge(center.z, blockDimensions.z * 0.5f));
         }
 
+        private float SnapEdge(float center, float halfSize)
+        {
+            return Mathf.Round((center - halfSize) / _cellSize) * _cellSize + halfSize;
+        }
+
+        // Heights are not grid-snapped: blocks are 0.3 / 0.5 / 1 tall, so rounding Y to whole cells
+        // sank thin pads into the floor and left 1x1 cubes floating. Only strip float noise.
+        private static float RoundHeight(float y) => Mathf.Round(y * 100f) / 100f;
+
         /// <summary>
-        /// Computes the snapped placement position against a raycast hit surface.
-        /// Offsets by half block dimension along the hit normal to prevent interpenetration.
+        /// Placement centre for a block against the surface the cursor ray hit.
+        /// Top/bottom faces: the block rests exactly on (or hangs under) that surface.
+        /// Side faces: the block sits flush against the face, level with the block that was clicked.
         /// </summary>
         public Vector3 GetPlacementPosition(RaycastHit hit, Vector3 blockDimensions)
         {
             Vector3 normal = hit.normal;
+            Vector3 half = blockDimensions * 0.5f;
+            Vector3 center;
 
-            // Determine dominant axis of normal
-            Vector3 snappedNormal = Vector3.zero;
             if (Mathf.Abs(normal.y) > 0.6f)
             {
-                snappedNormal = normal.y > 0 ? Vector3.up : Vector3.down;
-            }
-            else if (Mathf.Abs(normal.x) > Mathf.Abs(normal.z))
-            {
-                snappedNormal = normal.x > 0 ? Vector3.right : Vector3.left;
+                float y = normal.y > 0f ? hit.point.y + half.y : hit.point.y - half.y;
+                center = new Vector3(hit.point.x, y, hit.point.z);
             }
             else
             {
-                snappedNormal = normal.z > 0 ? Vector3.forward : Vector3.back;
+                Vector3 side = Mathf.Abs(normal.x) > Mathf.Abs(normal.z)
+                    ? new Vector3(Mathf.Sign(normal.x), 0f, 0f)
+                    : new Vector3(0f, 0f, Mathf.Sign(normal.z));
+
+                center = hit.point + Vector3.Scale(side, half);
+                center.y = hit.collider.bounds.min.y + half.y;
             }
 
-            // Target center point offset along surface normal
-            Vector3 halfExtents = blockDimensions * 0.5f;
-            float offsetAlongNormal = Vector3.Dot(halfExtents, snappedNormal);
-            Vector3 targetCenter = hit.point + snappedNormal * (offsetAlongNormal + 0.01f);
-
-            return Snap(targetCenter);
+            return SnapXZ(center, blockDimensions);
         }
 
         /// <summary>
-        /// Snaps a flat plane raycast (e.g. infinite floor) to grid.
+        /// Placement centre on the infinite build floor when the ray hits nothing.
         /// </summary>
         public Vector3 GetFloorPlacementPosition(Ray ray, Vector3 blockDimensions)
         {
             Plane floor = new Plane(Vector3.up, new Vector3(0f, _baseFloorY, 0f));
-            if (floor.Raycast(ray, out float enter))
-            {
-                Vector3 hitPoint = ray.GetPoint(enter);
-                hitPoint.y += blockDimensions.y * 0.5f;
-                return Snap(hitPoint);
-            }
-
-            return Snap(ray.origin + ray.direction * 10f);
+            Vector3 point = floor.Raycast(ray, out float enter) ? ray.GetPoint(enter) : ray.origin + ray.direction * 10f;
+            point.y = _baseFloorY + blockDimensions.y * 0.5f;
+            return SnapXZ(point, blockDimensions);
         }
 
         private void OnDrawGizmosSelected()

@@ -36,12 +36,14 @@ namespace BuildAndBounce.Race
         {
             CourseStart.OnCourseStarted += HandleCourseStarted;
             CourseFinish.OnCourseFinished += HandleCourseFinished;
+            CourseStart.OnCourseReset += StopPlayback;
         }
 
         private void OnDisable()
         {
             CourseStart.OnCourseStarted -= HandleCourseStarted;
             CourseFinish.OnCourseFinished -= HandleCourseFinished;
+            CourseStart.OnCourseReset -= StopPlayback;
         }
 
         public void LoadGhost(GhostRunData ghostData)
@@ -151,10 +153,7 @@ namespace BuildAndBounce.Race
 
             _ghostMaterial = new Material(shader) { color = _ghostColor };
 
-            if (_ghostMaterial.HasProperty("_Surface")) _ghostMaterial.SetFloat("_Surface", 1); // Transparent
-            if (_ghostMaterial.HasProperty("_Blend")) _ghostMaterial.SetFloat("_Blend", 0);
-            if (_ghostMaterial.HasProperty("_ZWrite")) _ghostMaterial.SetFloat("_ZWrite", 0);
-            _ghostMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            BuildAndBounce.Core.TransparentMaterial.Apply(_ghostMaterial);
 
             if (_ghostAvatar.TryGetComponent<MeshRenderer>(out var mr))
             {

@@ -1,5 +1,7 @@
 using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace BuildAndBounce.Builder
@@ -79,9 +81,21 @@ namespace BuildAndBounce.Builder
         public bool ToggleModeTriggered => Time.timeScale > 0f && (
             (_toggleModeAction != null && _toggleModeAction.WasPressedThisFrame()) ||
             (Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame) ||
-            (Gamepad.current != null && (Gamepad.current.selectButton.wasPressedThisFrame || Gamepad.current.startButton.wasPressedThisFrame))
+            (Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame) // Start is reserved for the pause menu
         );
         public bool IsUsingGamepad => _isUsingGamepad;
+
+        /// <summary>
+        /// True while a UI text field (e.g. the share-code box) has keyboard focus.
+        /// </summary>
+        public static bool IsTypingInTextField
+        {
+            get
+            {
+                var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+                return selected != null && selected.TryGetComponent<TMP_InputField>(out var field) && field.isFocused;
+            }
+        }
 
         private void Awake()
         {

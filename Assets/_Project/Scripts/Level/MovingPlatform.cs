@@ -37,6 +37,11 @@ namespace BuildAndBounce.Level
 
         public Vector3 PlatformVelocity => _platformVelocity;
 
+        /// <summary>
+        /// Where the platform was placed (its first waypoint), regardless of where it has moved to.
+        /// </summary>
+        public Vector3 HomePosition => _worldWaypoints != null && _worldWaypoints.Length > 0 ? _worldWaypoints[0] : transform.position;
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody>();
@@ -105,6 +110,22 @@ namespace BuildAndBounce.Level
                 _waitTimer = _waitDuration;
                 AdvanceWaypoint();
             }
+        }
+
+        /// <summary>
+        /// Snaps the platform back to its first waypoint (the level builder calls this when returning to
+        /// Build mode, so courses are edited and saved with platforms at their placed position).
+        /// </summary>
+        public void ResetToStart()
+        {
+            if (_worldWaypoints == null || _worldWaypoints.Length == 0) return;
+
+            _rigidbody.position = _worldWaypoints[0];
+            transform.position = _worldWaypoints[0];
+            _currentWaypointIndex = _worldWaypoints.Length > 1 ? 1 : 0;
+            _direction = 1;
+            _waitTimer = 0f;
+            _platformVelocity = Vector3.zero;
         }
 
         private void AdvanceWaypoint()

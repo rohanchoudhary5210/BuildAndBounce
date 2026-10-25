@@ -102,7 +102,7 @@ namespace BuildAndBounce.Builder
         }
 
         /// <summary>
-        /// Returns a list of all saved course files in the persistent storage folder.
+        /// Returns all saved course files in the persistent storage folder, oldest first.
         /// </summary>
         public static List<string> GetSavedCourseFiles()
         {
@@ -110,6 +110,8 @@ namespace BuildAndBounce.Builder
             if (Directory.Exists(CoursesDirectory))
             {
                 results.AddRange(Directory.GetFiles(CoursesDirectory, "*.json"));
+                // Oldest first, so "Load latest" (last entry) really is the most recent save
+                results.Sort((a, b) => File.GetLastWriteTimeUtc(a).CompareTo(File.GetLastWriteTimeUtc(b)));
             }
             return results;
         }

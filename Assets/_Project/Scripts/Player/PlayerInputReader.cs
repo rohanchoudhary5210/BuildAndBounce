@@ -33,6 +33,7 @@ namespace BuildAndBounce.Player
         private InputAction _lookAction;
         private InputAction _jumpAction;
         private InputAction _dashAction;
+        private InputAction _ownedDashAction;
 
         private Vector2 _moveInput;
         private Vector2 _lookInput;
@@ -112,7 +113,24 @@ namespace BuildAndBounce.Player
             _moveAction = _moveActionRef != null ? _moveActionRef.action : _playerInput?.actions?.FindAction("Move");
             _lookAction = _lookActionRef != null ? _lookActionRef.action : _playerInput?.actions?.FindAction("Look");
             _jumpAction = _jumpActionRef != null ? _jumpActionRef.action : _playerInput?.actions?.FindAction("Jump");
-            _dashAction = _dashActionRef != null ? _dashActionRef.action : (_playerInput?.actions?.FindAction("Dash") ?? _playerInput?.actions?.FindAction("Sprint"));
+            _dashAction = _dashActionRef != null ? _dashActionRef.action : _playerInput?.actions?.FindAction("Dash");
+
+            // The default actions asset has no Dash action (Sprint is bound to the left-stick click),
+            // so build one with the bindings the README documents.
+            if (_dashAction == null)
+            {
+                _ownedDashAction ??= CreateDefaultDashAction();
+                _dashAction = _ownedDashAction;
+            }
+        }
+
+        private static InputAction CreateDefaultDashAction()
+        {
+            var dash = new InputAction("Dash", InputActionType.Button);
+            dash.AddBinding("<Keyboard>/leftShift");
+            dash.AddBinding("<Keyboard>/f");
+            dash.AddBinding("<Gamepad>/buttonWest");
+            return dash;
         }
 
         private void SubscribeActions()
@@ -153,6 +171,13 @@ namespace BuildAndBounce.Player
             {
                 _dashAction.performed -= HandleDashPerformed;
             }
+
+            _ownedDashAction?.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            _ownedDashAction?.Dispose();
         }
 
         private void PollContinuousInputs()

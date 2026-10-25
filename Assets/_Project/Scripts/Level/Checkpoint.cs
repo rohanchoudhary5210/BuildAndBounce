@@ -69,7 +69,7 @@ namespace BuildAndBounce.Level
 
         public Vector3 RespawnPosition => _respawnPoint != null 
             ? _respawnPoint.position 
-            : transform.position + Vector3.up * (transform.localScale.y * 0.5f + 1.0f);
+            : transform.position + Vector3.up * (transform.lossyScale.y * 0.5f + 0.1f); // feet just above the pad top
 
         public Quaternion RespawnRotation => _respawnPoint != null ? _respawnPoint.rotation : transform.rotation;
         public int CheckpointIndex => _checkpointIndex;

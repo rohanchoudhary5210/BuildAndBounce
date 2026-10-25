@@ -63,6 +63,11 @@ namespace BuildAndBounce.Builder
         private Vector3 _currentPlacementPosition;
         private bool _isPlacementValid;
 
+        // Share code stays the same until the layout changes, so ghosts and leaderboards
+        // keep matching the course across test runs (a new random code every export broke both).
+        private string _shareCode = "";
+        private bool _layoutChanged = true;
+
         public BuilderMode CurrentMode => _currentMode;
         public BlockCatalog Catalog => _catalog;
         public CommandHistory History => _history;
@@ -197,6 +202,9 @@ namespace BuildAndBounce.Builder
                 _previewInstance.SetActive(true);
             }
 
+            // Typing a share code must not fire builder hotkeys (X deletes, Z undoes, Tab toggles mode...)
+            if (BuilderInputReader.IsTypingInTextField) return;
+
             // Toggle mode on Action Map ToggleMode (Tab / Gamepad Select)
             if (_inputReader != null && _inputReader.ToggleModeTriggered)
             {
@@ -245,12 +253,20 @@ namespace BuildAndBounce.Builder
                 _builderCamera.gameObject.SetActive(isBuild);
             }
 
+            // Moving platforms only move in Play mode, so blocks are edited and saved at their placed position
+            SetMovingPlatformsRunning(!isBuild);
+
             // Toggle player and gameplay camera
             if (_playerController != null)
             {
                 _playerController.gameObject.SetActive(!isBuild);
 
-                if (!isBuild)
+                if (isBuild)
+                {
+                    // Stop the timer, ghost recording and playback while editing
+                    CourseStart.TriggerCourseReset();
+                }
+                else
                 {
                     // Set active course ID for ghost recording and playback
                     var course = ExportCourseData();
@@ -259,7 +275,7 @@ namespace BuildAndBounce.Builder
                         _raceGhostManager.SetCourseId(course.shareCode);
                     }
 
-                    // Dynamically resolve active CourseStart from placed blocks or scene
+                    // Resolve the Start pad of the built course (validation guarantees exactly one)
                     CourseStart activeStart = null;
                     foreach (var kvp in _placedBlocks)
                     {
@@ -275,13 +291,20 @@ namespace BuildAndBounce.Builder
                     }
                     _courseStart = activeStart;
 
+                    // PlayerRespawn must know the UGC start too, otherwise falling or "Restart Run"
+                    // sends the player back to the scene's original start pad.
+                    var respawn = _playerController.GetComponent<PlayerRespawn>();
+                    if (respawn != null && _courseStart != null)
+                    {
+                        respawn.SetCourseStart(_courseStart);
+                    }
+
                     // Trigger unified course reset (CourseStart, CourseFinish, Checkpoints, PlayerRespawn, CourseTimer, GhostRecorder)
                     CourseStart.TriggerCourseReset();
 
-                    var respawn = _playerController.GetComponent<PlayerRespawn>();
-                    if (_courseStart != null && respawn != null)
+                    if (respawn != null)
                     {
-                        respawn.RespawnAt(_courseStart.SpawnPosition, _courseStart.SpawnRotation);
+                        respawn.Respawn();
                     }
                 }
             }
@@ -299,6 +322,19 @@ namespace BuildAndBounce.Builder
             }
 
             OnModeChanged?.Invoke(_currentMode);
+        }
+
+        private void SetMovingPlatformsRunning(bool running)
+        {
+            foreach (var kvp in _placedBlocks)
+            {
+                if (kvp.Key == null) continue;
+                foreach (var platform in kvp.Key.GetComponentsInChildren<MovingPlatform>(true))
+                {
+                    if (!running) platform.ResetToStart();
+                    platform.enabled = running;
+                }
+            }
         }
 
         public void ToggleMode()
@@ -364,12 +400,15 @@ namespace BuildAndBounce.Builder
 
             if (_inputReader == null) return;
 
+            // Q/E fly the camera up/down while the right mouse button is held, so ignore palette keys then
+            bool isFlyingCamera = Mouse.current != null && Mouse.current.rightButton.isPressed;
+
             // Palette navigation (Next / Previous block via Action Map)
-            if (_inputReader.NextBlockTriggered)
+            if (!isFlyingCamera && _inputReader.NextBlockTriggered)
             {
                 SelectNextBlock();
             }
-            else if (_inputReader.PrevBlockTriggered)
+            else if (!isFlyingCamera && _inputReader.PrevBlockTriggered)
             {
                 SelectPreviousBlock();
             }
@@ -415,8 +454,8 @@ namespace BuildAndBounce.Builder
                         }
                         if (existingStart != null)
                         {
-                            UnregisterPlacedBlock(existingStart);
-                            Destroy(existingStart);
+                            // Go through the history (not Destroy) so Undo/Redo can't resurrect a second Start pad
+                            _history.ExecuteCommand(new DeleteBlockCommand(this, existingStart, _placedBlocks[existingStart]));
                         }
                     }
 
@@ -445,7 +484,7 @@ namespace BuildAndBounce.Builder
 
             Vector2 screenPos = _inputReader != null ? _inputReader.CursorPosition : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             Ray ray = cam.ScreenPointToRay(screenPos);
-            if (Physics.Raycast(ray, out RaycastHit hit, 200f, _buildRaycastLayers))
+            if (Physics.Raycast(ray, out RaycastHit hit, 200f, _buildRaycastLayers, QueryTriggerInteraction.Ignore))
             {
                 var root = hit.collider.transform;
                 while (root.parent != null && root.parent != _courseContainer)
@@ -473,7 +512,14 @@ namespace BuildAndBounce.Builder
             var blockData = _catalog.GetBlock(_selectedBlockIndex);
             Vector3 dims = blockData != null ? blockData.Dimensions : Vector3.one;
 
-            if (Physics.Raycast(ray, out RaycastHit hit, 150f, _buildRaycastLayers))
+            // A 90/270 degree turn swaps the footprint's width and depth
+            if (Mathf.RoundToInt(_currentRotationY / 90f) % 2 != 0)
+            {
+                dims = new Vector3(dims.z, dims.y, dims.x);
+            }
+
+            // Ignore trigger volumes (start/checkpoint/rider triggers sit above pads); they made blocks float
+            if (Physics.Raycast(ray, out RaycastHit hit, 150f, _buildRaycastLayers, QueryTriggerInteraction.Ignore))
             {
                 _currentPlacementPosition = _grid.GetPlacementPosition(hit, dims);
             }
@@ -494,7 +540,7 @@ namespace BuildAndBounce.Builder
         {
             // Small inset to prevent adjacent faces from triggering false collisions
             Vector3 halfExtents = dims * 0.48f;
-            int count = Physics.OverlapBoxNonAlloc(center, halfExtents, _overlapBuffer, Quaternion.Euler(0f, _currentRotationY, 0f), _buildRaycastLayers);
+            int count = Physics.OverlapBoxNonAlloc(center, halfExtents, _overlapBuffer, Quaternion.identity, _buildRaycastLayers, QueryTriggerInteraction.Ignore);
 
             for (int i = 0; i < count; i++)
             {
@@ -555,8 +601,7 @@ namespace BuildAndBounce.Builder
         {
             var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Standard") ?? Shader.Find("Sprites/Default");
             _previewMaterial = new Material(shader) { color = _validPlacementColor };
-            if (_previewMaterial.HasProperty("_Surface")) _previewMaterial.SetFloat("_Surface", 1); // Transparent
-            if (_previewMaterial.HasProperty("_Blend")) _previewMaterial.SetFloat("_Blend", 0);
+            BuildAndBounce.Core.TransparentMaterial.Apply(_previewMaterial);
         }
 
         public GameObject InstantiateBlockDirect(BlockData data, Vector3 position, Quaternion rotation)
@@ -582,6 +627,16 @@ namespace BuildAndBounce.Builder
             }
 
             instance.name = $"{data.Id}_{_placedBlocks.Count + 1}";
+
+            // Disabled before Start() runs, so the platform records its waypoints from the placed position
+            if (_currentMode == BuilderMode.Build)
+            {
+                foreach (var platform in instance.GetComponentsInChildren<MovingPlatform>(true))
+                {
+                    platform.enabled = false;
+                }
+            }
+
             RegisterPlacedBlock(instance, data);
             return instance;
         }
@@ -591,6 +646,7 @@ namespace BuildAndBounce.Builder
             if (obj != null && data != null)
             {
                 _placedBlocks[obj] = data;
+                _layoutChanged = true;
                 OnBlockCountChanged?.Invoke(_placedBlocks.Count);
             }
         }
@@ -600,6 +656,7 @@ namespace BuildAndBounce.Builder
             if (obj != null)
             {
                 _placedBlocks.Remove(obj);
+                _layoutChanged = true;
                 OnBlockCountChanged?.Invoke(_placedBlocks.Count);
             }
         }
@@ -614,10 +671,20 @@ namespace BuildAndBounce.Builder
                 if (kvp.Key == null || !kvp.Key.activeInHierarchy) continue;
 
                 var blockData = kvp.Value;
-                var transform = kvp.Key.transform;
-                data.blocks.Add(new PlacedBlockData(blockData.Id, transform.position, transform.eulerAngles));
+                var blockTransform = kvp.Key.transform;
+
+                // A moving platform saved mid-ride would shift its whole path on reload
+                var platform = kvp.Key.GetComponentInChildren<MovingPlatform>(true);
+                Vector3 position = platform != null ? platform.HomePosition : blockTransform.position;
+
+                data.blocks.Add(new PlacedBlockData(blockData.Id, position, blockTransform.eulerAngles));
             }
-            data.shareCode = BuildAndBounce.Net.ShareCodeGenerator.Generate(6);
+            if (_layoutChanged || string.IsNullOrEmpty(_shareCode))
+            {
+                _shareCode = BuildAndBounce.Net.ShareCodeGenerator.Generate(6);
+                _layoutChanged = false;
+            }
+            data.shareCode = _shareCode;
             return data;
         }
 
@@ -636,6 +703,10 @@ namespace BuildAndBounce.Builder
                     InstantiateBlockDirect(blockData, pb.position, Quaternion.Euler(pb.rotation));
                 }
             }
+
+            // Keep the loaded code so ghosts and leaderboards stay attached to this course
+            _shareCode = data.shareCode;
+            _layoutChanged = string.IsNullOrEmpty(_shareCode);
 
             Debug.Log($"[LevelBuilder] Loaded course '{data.courseName}' with {data.blocks.Count} blocks (Code: {data.shareCode})");
             OnBlockCountChanged?.Invoke(_placedBlocks.Count);
@@ -668,6 +739,8 @@ namespace BuildAndBounce.Builder
                 }
             }
 
+            _shareCode = "";
+            _layoutChanged = true;
             OnBlockCountChanged?.Invoke(0);
         }
 

@@ -152,7 +152,7 @@ namespace BuildAndBounce.Net
         {
             ClearProxies();
 
-            Vector3 baseOrigin = _startPad != null ? _startPad.SpawnPosition : Vector3.zero;
+            Vector3 baseOrigin = (_startPad != null ? _startPad.SpawnPosition : Vector3.zero) + Vector3.up; // SpawnPosition is feet height
             Vector3[] offsets = new Vector3[]
             {
                 new Vector3(-1.2f, 0f, 0f),

@@ -5,7 +5,7 @@ namespace BuildAndBounce.Builder
 {
     /// <summary>
     /// Free-flight / orbital editor camera used exclusively during Build Mode.
-    /// Supports WASD panning, right-click orbit, Q/E elevation, and scroll-wheel zoom.
+    /// Supports WASD panning, right-click orbit, Q/E elevation (while orbiting), and scroll-wheel zoom.
     /// </summary>
     public class BuilderCamera : MonoBehaviour
     {
@@ -83,7 +83,7 @@ namespace BuildAndBounce.Builder
 
         private void HandleMovement()
         {
-            if (Keyboard.current == null) return;
+            if (Keyboard.current == null || BuilderInputReader.IsTypingInTextField) return;
 
             float speed = _moveSpeed;
             if (Keyboard.current.leftShiftKey.isPressed)
@@ -97,8 +97,10 @@ namespace BuildAndBounce.Builder
             if (Keyboard.current.sKey.isPressed) move -= transform.forward;
             if (Keyboard.current.dKey.isPressed) move += transform.right;
             if (Keyboard.current.aKey.isPressed) move -= transform.right;
-            if (Keyboard.current.eKey.isPressed || Keyboard.current.spaceKey.isPressed) move += Vector3.up;
-            if (Keyboard.current.qKey.isPressed || Keyboard.current.leftCtrlKey.isPressed) move -= Vector3.up;
+            // Vertical fly only while orbiting (right mouse held): Q/E alone cycle blocks and Space places
+            bool isOrbiting = Mouse.current != null && Mouse.current.rightButton.isPressed;
+            if (isOrbiting && Keyboard.current.eKey.isPressed) move += Vector3.up;
+            if (isOrbiting && Keyboard.current.qKey.isPressed) move -= Vector3.up;
 
             if (move.sqrMagnitude > 0.001f)
             {

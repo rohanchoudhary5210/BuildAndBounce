@@ -5,7 +5,7 @@ namespace BuildAndBounce.Player
 {
     /// <summary>
     /// Core 3D platformer motor. Drives character movement, rotation, and jump physics via
-    /// a CharacterController on FixedUpdate for predictable, deterministic physics.
+    /// a CharacterController in Update, so the player moves in step with the rendered camera.
     /// Employs jump apex kinematics, coyote time, jump buffering, variable jump height,
     /// air-jump budgeting (double jump), and directional dashing.
     /// </summary>
@@ -36,6 +36,7 @@ namespace BuildAndBounce.Player
         private bool _isDashing;
         private float _dashTimer;
         private float _dashCooldownTimer;
+        private bool _canAirDash = true;
         private Vector3 _dashDirection;
 
         private float _rotationVelocity;
@@ -106,28 +107,24 @@ namespace BuildAndBounce.Player
             }
         }
 
+        // Runs in Update (not FixedUpdate): a CharacterController has no interpolation, so moving it
+        // at 50 Hz while Cinemachine renders at 60-144 Hz makes the player visibly stutter.
         private void Update()
         {
-            if (Time.timeScale == 0f) return;
+            if (_data == null || Time.timeScale == 0f) return;
 
-            // Jump buffer is polled in Update to capture rapid taps between physics frames
+            // Inputs are consumed in the same frame they are read, so no tap is ever lost
             if (_inputReader.JumpTriggered)
             {
                 _jumpBufferTimer = _data.JumpBufferTime;
                 _inputReader.ConsumeJumpTrigger();
             }
 
-            // Dash trigger polled similarly
             if (_inputReader.DashTriggered)
             {
                 _inputReader.ConsumeDashTrigger();
                 TryStartDash();
             }
-        }
-
-        private void FixedUpdate()
-        {
-            if (_data == null) return;
 
             UpdateGroundState();
             UpdateTimers();
@@ -167,6 +164,7 @@ namespace BuildAndBounce.Player
             {
                 _coyoteTimer = _data.CoyoteTime;
                 _remainingJumps = _data.MaxJumps;
+                _canAirDash = true;
 
                 if (!wasGrounded)
                 {
@@ -189,7 +187,7 @@ namespace BuildAndBounce.Player
 
         private void UpdateTimers()
         {
-            float dt = Time.fixedDeltaTime;
+            float dt = Time.deltaTime;
 
             if (!_isGrounded && _coyoteTimer > 0f)
             {
@@ -218,7 +216,7 @@ namespace BuildAndBounce.Player
                 accel *= _data.AirControlRate;
             }
 
-            _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, targetVelocity, accel * Time.fixedDeltaTime);
+            _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, targetVelocity, accel * Time.deltaTime);
 
             // Rotate character to face movement direction smoothly
             if (moveDir.sqrMagnitude > 0.001f)
@@ -300,13 +298,16 @@ namespace BuildAndBounce.Player
                 gravity = _data.BaseGravity;
             }
 
-            _verticalVelocity -= gravity * Time.fixedDeltaTime;
+            _verticalVelocity -= gravity * Time.deltaTime;
             _verticalVelocity = Mathf.Max(_verticalVelocity, -_data.MaxFallSpeed);
         }
 
         private void TryStartDash()
         {
             if (_dashCooldownTimer > 0f || _isDashing || _data == null) return;
+            // One dash per airtime, otherwise chaining dashes on cooldown lets the player fly over the course
+            if (!_isGrounded && !_canAirDash) return;
+            if (!_isGrounded) _canAirDash = false;
 
             Vector3 moveDir = CalculateCameraRelativeDirection(_inputReader.MoveInput);
             _dashDirection = moveDir.sqrMagnitude > 0.001f ? moveDir : transform.forward;
@@ -321,7 +322,7 @@ namespace BuildAndBounce.Player
 
         private void ProcessDash()
         {
-            _dashTimer -= Time.fixedDeltaTime;
+            _dashTimer -= Time.deltaTime;
             _horizontalVelocity = _dashDirection * _data.DashSpeed;
             _verticalVelocity = 0f;
 
@@ -336,7 +337,7 @@ namespace BuildAndBounce.Player
         private void ApplyMovement()
         {
             Vector3 finalVelocity = _horizontalVelocity + Vector3.up * _verticalVelocity + _platformVelocity;
-            _characterController.Move(finalVelocity * Time.fixedDeltaTime);
+            _characterController.Move(finalVelocity * Time.deltaTime);
         }
 
         /// <summary>
@@ -365,6 +366,7 @@ namespace BuildAndBounce.Player
             _platformVelocity = Vector3.zero;
             _isDashing = false;
             _dashTimer = 0f;
+            _canAirDash = true;
         }
     }
 }

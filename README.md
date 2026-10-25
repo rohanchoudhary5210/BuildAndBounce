@@ -72,13 +72,14 @@ The game is playable on **Keyboard & Mouse**, **Xbox/PlayStation Gamepads**, and
 | **Jump** | `Space` | South Button (`A` / `Cross`) | Touch Jump Button |
 | **Double Jump** | `Space` (in air) | South Button (in air) | Touch Jump Button |
 | **Air Dash** | `Left Shift` / `F` | West Button (`X` / `Square`) | Touch Dash Button |
-| **Build / Play Toggle**| `Tab` | `Select` / `Back` / `Start` | Top-Right Toggle Button |
+| **Build / Play Toggle**| `Tab` | `Select` / `Back` | Top-Right Toggle Button |
 | **Place Block** *(Build)* | Left Mouse Click / `Space` | South Button (`A` / `Cross`) | Tap Grid Cell |
 | **Rotate Block** *(Build)*| `R` | North Button (`Y`) / Right Shoulder | Rotate Button |
 | **Delete Block** *(Build)*| `X` / `Delete` | West Button (`X` / `Square`) | Delete Tool |
 | **Undo / Redo** *(Build)* | `Z` / `Y` | Left / Right Shoulder | Undo Button |
 | **Next / Prev Block** | `E` / `Q` | D-Pad Right / D-Pad Left | Palette Selector |
 | **Pause Menu** | `Escape` | `Start` / `Options` | Pause Icon |
+| **Builder Camera** *(Build)* | `WASD` move, hold Right Mouse to orbit, + `Q`/`E` down/up, Scroll zoom | — | — |
 
 ---
 
@@ -105,7 +106,7 @@ The game is playable on **Keyboard & Mouse**, **Xbox/PlayStation Gamepads**, and
 ## 📊 6. Performance & Architectural Goals
 
 - **Zero GC Allocations in Hot Paths**: Pre-allocated buffers, non-allocating physics queries (`Physics.OverlapBoxNonAlloc`), and cached delegates.
-- **Deterministic Physics Step**: 50 Hz `FixedUpdate` character controller execution.
+- **Camera-Synced Motor**: The CharacterController moves in `Update` (it has no interpolation, so a 50 Hz `FixedUpdate` motor stutters under a 60–144 Hz camera). Ghost sampling stays on the fixed 20 Hz tick.
 - **Audio Listeners**: Automated `AudioListenerGuard` enforces exactly 1 listener.
 - **Shared Materials**: Palette blocks reuse shared materials per block type to avoid runtime material instantiation.
 
